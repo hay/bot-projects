@@ -1,13 +1,18 @@
 from dataknead import Knead
 from pathlib import Path
 from pywikibot import WbTime
-# from wikidata_utils import PATH, site, wbtime_now, Skiplist
 from util.skiplist import Skiplist
 from util.wikidata import Props, Items, WikidataItem
 from util.wikipedia import get_permalink
 import pywikibot
 import requests
 import sys
+
+def get_ref(item, permalink):
+    return [
+        item.get_item_claim(Props.IMPORTED_FROM, Items.WIKIPEDIA_NL),
+        item.get_url_claim(Props.WM_IMPORT_URL, permalink)
+    ]
 
 def convert_year(year):
     ytype = year["type"]
@@ -20,7 +25,7 @@ def convert_year(year):
     else:
         return WbTime(year = val)
 
-def set_restored_claim(item, years, ref):
+def set_sig_claim(item, qid, years, permalink):
     print(f"Got {len(years)} year(s) claim for restoration")
 
     for year in years:
@@ -28,71 +33,77 @@ def set_restored_claim(item, years, ref):
 
         if year["type"] == "range":
             qualifiers = [
-                wd_item.get_claim(Props.START_TIME, convert_year(year["value"][0])),
-                wd_item.get_claim(Props.END_TIME, convert_year(year["value"][1]))
+                item.get_claim(Props.START_TIME, WbTime(year = int(year["value"][0]))),
+                item.get_claim(Props.END_TIME, WbTime(year = int(year["value"][1])))
             ]
         elif year["type"] in ["century", "decade", "year"]:
             qualifiers = [
-                wd_item.get_claim(Props.POINT_IN_TIME, convert_year(year["value"]))
+                item.get_claim(Props.POINT_IN_TIME, convert_year(year))
             ]
+
+            if all(["start" in year, "end" in year]):
+                qualifiers.extend([
+                    item.get_claim(Props.START_TIME, WbTime(year = int(year["start"]))),
+                    item.get_claim(Props.END_TIME, WbTime(year = int(year["end"])))
+                ])
         else:
             print("Invalid year type: " + year["type"])
             continue
 
-        wd_item.add_item_claim(
+        item.add_item_claim(
             Props.SIG_EVENT,
-            Items.RECONSTRUCTION,
+            qid,
             qualifiers = qualifiers,
-            references = ref
+            references = get_ref(item, permalink)
         )
 
-def set_year_claim(item, prop, years, ref):
+def set_year_claim(item, prop, years, permalink):
     print(f"Got {len(years)} year(s) claim for {prop}")
 
     for year in years:
         print(f"Adding year: {year}")
 
         if year["type"] == "range":
-            wd_item.add_time_claim(
+            item.add_time_claim(
                 prop,
                 "novalue",
                 qualifiers = [
-                    wd_item.get_claim(Props.START_TIME, convert_year(year["value"][0])),
-                    wd_item.get_claim(Props.END_TIME, convert_year(year["value"][1]))
+                    item.get_claim(Props.START_TIME, WbTime(year = int(year["value"][0]))),
+                    item.get_claim(Props.END_TIME, WbTime(year = int(year["value"][1])))
                 ],
-                references = ref
+                references = get_ref(item, permalink)
             )
         elif year["type"] in ["century", "decade"]:
-            wd_item.add_time_claim(
+            item.add_time_claim(
                 prop,
-                convert_year(year["value"]),
+                convert_year(year),
                 qualifiers = [
-                    wd_item.get_claim(Props.START_TIME, convert_year(year["start"])),
-                    wd_item.get_claim(Props.END_TIME, convert_year(year["end"]))
+                    item.get_claim(Props.START_TIME, WbTime(year = int(year["start"]))),
+                    item.get_claim(Props.END_TIME, WbTime(year = int(year["end"])))
                 ],
-                references = ref
+                references = get_ref(item, permalink)
             )
         elif year["type"] == "circa":
-            wd_item.add_time_claim(
+            item.add_time_claim(
                 prop,
-                convert_year(year["value"]),
+                convert_year(year),
                 qualifiers = [
-                    wd_item.get_item_claim(Props.PRECISION, Items.CIRCA)
+                    item.get_item_claim(Props.PRECISION, Items.CIRCA)
                 ],
-                references = ref
+                references = get_ref(item, permalink)
             )
         elif year["type"] == "year":
-            wd_item.add_time_claim(
+            item.add_time_claim(
                 prop,
-                convert_year(year["value"]),
-                references = ref
+                convert_year(year),
+                references = get_ref(item, permalink)
             )
         else:
             print("Invalid year type: " + year["type"])
             continue
 
 def main():
-    items = Knead("projects/data/churches/churches.json").data()
+    items = Knead("projects/data/churches/import.json").data()
     skiplist = Skiplist("projects/skiplists/churches.txt")
 
     for index, item in enumerate(items):
@@ -118,20 +129,17 @@ def main():
         claims = wd_item.get_claims()
         permalink = get_permalink("nl", title)
 
-        def reflink():
-            return [
-                wd_item.get_item_claim(Props.IMPORTED_FROM, Items.WIKIPEDIA_NL),
-                wd_item.get_url_claim(Props.WM_IMPORT_URL, permalink)
-            ]
-
         if item["inception"] and Props.INCEPTION not in claims:
-            set_year_claim(wd_item, Props.INCEPTION, item["inception"], reflink())
+            set_year_claim(wd_item, Props.INCEPTION, item["inception"], permalink)
 
         if item["demolished"] and Props.DISSOLVED not in claims:
-            set_year_claim(wd_item, Props.DISSOLVED, item["demolished"], reflink())
+            set_year_claim(wd_item, Props.DISSOLVED, item["demolished"], permalink)
 
         if item["restored"] and Props.SIG_EVENT not in claims:
-            set_restored_claim(wd_item, item["restored"], reflink())
+            set_sig_claim(wd_item, Items.RECONSTRUCTION, item["restored"], permalink)
+
+        if item["expanded"] and Props.SIG_EVENT not in claims:
+            set_sig_claim(wd_item, Items.BUILDING_EXPANSION, item["expanded"], permalink)
 
         skiplist.add(qid)
         break
