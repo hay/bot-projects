@@ -64,7 +64,7 @@ def set_year_claim(item, prop, years, permalink):
         print(f"Adding year: {year}")
 
         if year["type"] == "range":
-            item.add_time_claim(
+            item.add_item_claim(
                 prop,
                 "novalue",
                 qualifiers = [
@@ -74,13 +74,18 @@ def set_year_claim(item, prop, years, permalink):
                 references = get_ref(item, permalink)
             )
         elif year["type"] in ["century", "decade"]:
-            item.add_time_claim(
-                prop,
-                convert_year(year),
+            if all(["start" in year, "end" in year]):
                 qualifiers = [
                     item.get_claim(Props.START_TIME, WbTime(year = int(year["start"]))),
                     item.get_claim(Props.END_TIME, WbTime(year = int(year["end"])))
-                ],
+                ]
+            else:
+                qualifiers = None
+
+            item.add_time_claim(
+                prop,
+                convert_year(year),
+                qualifiers = qualifiers,
                 references = get_ref(item, permalink)
             )
         elif year["type"] == "circa":
@@ -142,7 +147,9 @@ def main():
             set_sig_claim(wd_item, Items.BUILDING_EXPANSION, item["expanded"], permalink)
 
         skiplist.add(qid)
-        break
+
+        if index > 100:
+            break
 
 if __name__ == "__main__":
     main()
