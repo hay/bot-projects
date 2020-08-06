@@ -4,6 +4,7 @@ import requests
 class Props:
     APPLIES_TO_PART = "P518"
     BAG_PUBSPACE = "P5207"
+    CAPACITY = "P1083"
     CATALOG = "P972"
     CATALOG_CODE = "P528"
     CCONTEXT = "P8296"
@@ -11,14 +12,17 @@ class Props:
     COORDINATES = "P625"
     COORDINATES_POV = "P1259"
     COUNTRY = "P17"
+    COUNTRY_OF_ORIGIN = "P495"
     CREATOR = "P170"
     DESCRIBED_AT_URL = "P973"
     DATE_OF_BIRTH = "P569"
     DATE_OF_DEATH = "P570"
     DISSOLVED = "P576"
+    DISTRIBUTED_BY = "P750"
     EDUCATED_AT = "P69"
     END_TIME = "P582"
     GENDER = "P21"
+    GENRE = "P136"
     GTAA = "P1741"
     HAS_WORKS_IN_COLLECTION = "P6379"
     IMPORTED_FROM = "P143"
@@ -26,6 +30,7 @@ class Props:
     INSTANCE_OF = "P31"
     ISBN_10 = "P957"
     ISBN_13 = "P212"
+    LANGUAGE_SHOW = "P364"
     LANGUAGE_WORK = "P407"
     LOCATED_IN = "P131"
     NAMED_AFTER = "P138"
@@ -33,7 +38,9 @@ class Props:
     NR_OF_PAGES = "P1104"
     OCCUPATION = "P106"
     OFFICIAL_WEBSITE = "P856"
+    ORIGINAL_BROADCASTER = "P449"
     OWNED_BY = "P127"
+    PART_OF_SERIES = "P179"
     PAYMENT_ACCEPTED = "P2851"
     PHONE_NUMBER = "P1329"
     PLACE_OF_BIRTH = "P19"
@@ -41,16 +48,19 @@ class Props:
     POINT_IN_TIME = "P585"
     POSTAL_CODE = "P281"
     PRECISION = "P1480"
+    PRESENTER = "P371"
     PUB_DATE = "P577"
     REF_URL = "P854"
     RETRIEVED = "P813"
     RKD_ARTISTS = "P650"
     RKD_IMAGES = "P350"
+    SERIES_ORDINAL = "P1545"
     SIG_EVENT = "P793"
     START_TIME = "P580"
     STATED_IN = "P248"
     STREET_KEY = "P1945"
     STUDENT_OF = "P1066"
+    TALK_SHOW_GUEST = "P5030"
     TITLE = "P1476"
     WM_IMPORT_URL = "P4656"
     ZIP = "P281"
@@ -86,14 +96,19 @@ class Items:
     MUSICBRAINZ = "Q14005"
     MUSICAL_MAPS = "Q80590524"
     NETHERLANDS = "Q55"
+    NPO = "Q15991875"
     PARK = "Q22698"
     RECONSTRUCTION = "Q1370468"
     RKD = "Q758610"
     SQUARE = "Q174782"
     STREET = "Q79007"
+    TALK_SHOW = "Q622812"
     TUNNEL = "Q44377"
+    TV_SERIES_EPISODE = "Q21191270"
+    VPRO = "Q1282036"
     WIKIPEDIA_NL = "Q10000"
     WP_ARTICLE_PAGE = "Q50081413"
+    ZOMERGASTEN = "Q2330424"
 
 class TestItems(Items):
     BAG_BOOK = "Q56403"
@@ -177,7 +192,7 @@ class WikidataItem:
     def __init__(
         self,
         qid = None, labels = None, descriptions = None, summary = None,
-        follow_redirect = False
+        follow_redirect = False, aliases = None
     ):
         self.site = pywikibot.Site("wikidata", "wikidata")
         self.repo = self.site.data_repository()
@@ -194,6 +209,9 @@ class WikidataItem:
 
             if descriptions:
                 self.edit_descriptions(descriptions, summary)
+
+            if aliases:
+                self.edit_aliases(aliases, summary)
 
             qid = self.item.getID()
             print("Item created: %s" % qid)
@@ -216,6 +234,9 @@ class WikidataItem:
 
         if descriptions:
             self.edit_descriptions(descriptions, summary)
+
+        if aliases:
+            self.edit_aliases(aliases, summary)
 
     def add_claim(self, claim, qualifiers = None, references = None):
         print(f'Adding claim {claim}')

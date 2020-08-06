@@ -148,8 +148,5 @@ def main():
 
         skiplist.add(qid)
 
-        if index > 100:
-            break
-
 if __name__ == "__main__":
     main()

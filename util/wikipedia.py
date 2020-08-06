@@ -1,3 +1,4 @@
+from .utils import chunk
 from bs4 import BeautifulSoup
 from dataknead import Knead
 import json
@@ -23,6 +24,30 @@ def get_permalink(lang, title):
     oldid = val["lastrevid"]
 
     return f"https://{lang}.wikipedia.org/w/index.php?curid={curid}&oldid={oldid}"
+
+def get_qids(lang, titles):
+    api = MediawikiApi("wikipedia", lang)
+    print(f"Getting {len(titles)} titles")
+    qids = {}
+
+    for title_set in chunk(titles, 50):
+        data = api.call({
+            "action" : "query",
+            "prop" : "pageprops",
+            "titles" : "|".join(titles)
+        })
+
+        pages = data["query"]["pages"]
+
+        if "-1" in pages:
+            raise Exception("Page not found")
+
+        val = pages[list(pages.keys())[0]]
+        curid = val["pageid"]
+        oldid = val["lastrevid"]
+
+    return qids
+
 
 class MediawikiApi:
     def __init__(self, project, lang):

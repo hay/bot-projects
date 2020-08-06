@@ -11,6 +11,9 @@ PATH = os.path.realpath(
     )
 )
 
+def chunk(lst, size):
+    return [ lst[i:i + size] for i in range(0, len(lst), size) ]
+
 def wbtime_now():
     now = datetime.now()
 
