@@ -9,6 +9,12 @@ import locale
 import pywikibot
 import sys
 
+def get_ref(item):
+    return [
+        item.get_item_claim(Props.IMPORTED_FROM, Items.WIKIPEDIA_NL),
+        item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=56861509")
+    ]
+
 def parse_date(isodate):
     date = datetime.strptime(isodate, "%Y-%m-%d")
 
@@ -18,20 +24,21 @@ def parse_date(isodate):
     nl = date.strftime("%d %B %Y")
 
     return {
+        "day" : date.day,
         "en" : en,
         "iso" : isodate,
-        "nl" : nl
+        "month" : date.month,
+        "nl" : nl,
+        "year" : date.year
     }
-
 
 def main():
     PATH = str(Path(__file__).parent)
     seasons = Knead(PATH + "/data/zomergasten/zomergasten.json").data()
-    skiplist = Skiplist(PATH + "/skiplists/zomergasten.txt")
 
     # Sort seasons by season_nr
     seasons.sort(key = lambda i:i["season_nr"])
-    episode_nr = 1
+    episode_nr = 0
 
     for season in seasons:
         print()
@@ -41,8 +48,11 @@ def main():
         presenter_qid = season["presenter"]["qid"]
 
         for guest in season["guests"]:
+            episode_nr += 1
             guest_name = guest["guest"]["text"]
             guest_qid = guest["guest"]["qid"]
+            print("----" * 20)
+            print()
             print(f"Handling episode #{episode_nr}, guest {guest_name}")
             date = parse_date(guest["date_parsed"])
 
@@ -65,37 +75,52 @@ def main():
                 ]
             }
 
-            item = WikidataItem(
-                site = site,
-                summary = f"Creating new item for the Zomergasten episode with {guest_name}",
-                labels = {
-                    "en" : desc["label_en"],
-                    "nl" : desc["label_nl"]
-                },
-                descriptions = {
-                    "en" : desc["description_en"],
-                    "nl" : desc["description_nl"]
-                },
-                aliases = {
-                    "en" : desc["aliases_en"],
-                    "nl" : desc["aliases_nl"]
-                }
-            )
+            if "qid" in guest:
+                print(f"Getting a qid: {guest['qid']}")
+                item = WikidataItem(guest["qid"])
+            else:
+                item = WikidataItem(
+                    summary = f"Creating new item for the Zomergasten episode with {guest_name}",
+                    labels = {
+                        "en" : desc["label_en"],
+                        "nl" : desc["label_nl"]
+                    },
+                    descriptions = {
+                        "en" : desc["description_en"],
+                        "nl" : desc["description_nl"]
+                    },
+                    aliases = {
+                        "en" : desc["aliases_en"],
+                        "nl" : desc["aliases_nl"]
+                    }
+                )
 
             item.add_item_claim(Props.INSTANCE_OF, Items.TV_SERIES_EPISODE)
             item.add_item_claim(Props.PART_OF_SERIES, Items.ZOMERGASTEN, qualifiers = [
-                item.get_string_claim(Props.SERIES_ORDINAL, string(episode_nr))
+                item.get_string_claim(Props.SERIES_ORDINAL, str(episode_nr))
             ])
             item.add_item_claim(Props.GENRE, Items.TALK_SHOW)
-            item.add_item_claim(Props.PRESENTER, presenter_qid)
             item.add_item_claim(Props.ORIGINAL_BROADCASTER, Items.VPRO)
             item.add_item_claim(Props.COUNTRY_OF_ORIGIN, Items.NETHERLANDS)
             item.add_item_claim(Props.LANGUAGE_SHOW, Items.DUTCH)
-            item.add_time_claim(Props.PUB_DATE, pywikibot.fromTimestr(date["iso"]))
-            item.add_item_claim(Props.TALK_SHOW_GUEST, guest_qid)
+            item.add_item_claim(Props.PRESENTER, presenter_qid,
+                references = get_ref(item)
+            )
+            item.add_time_claim(
+                Props.PUB_DATE,
+                pywikibot.WbTime(
+                    year = date["year"],
+                    month = date["month"],
+                    day = date["day"]
+                ),
+                references = get_ref(item)
+            )
+            item.add_item_claim(Props.TALK_SHOW_GUEST, guest_qid,
+                references = get_ref(item)
+            )
             item.add_item_claim(Props.DISTRIBUTED_BY, Items.NPO)
 
-            episode_nr += 1
+            sys.exit()
 
 if __name__ == "__main__":
     main()
