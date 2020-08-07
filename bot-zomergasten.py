@@ -13,7 +13,85 @@ def get_ref(item):
         item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=56861509")
     ]
 
-def main():
+def create_seasons():
+    PATH = str(Path(__file__).parent)
+    seasons = Knead(PATH + "/data/zomergasten/zomergasten.json").data()
+
+    # Sort seasons by season_nr
+    seasons.sort(key = lambda i:i["season_nr"])
+
+    for season in seasons:
+        season_nr = season["season_nr"]
+        print("----" * 20)
+        print()
+        print(f"Handling season #{season_nr}")
+
+        year = season["year"]
+        presenter_name = season["presenter"]["title"]
+        presenter_qid = season["presenter"]["qid"]
+        episodes_count = len(season["guests"])
+
+        if season_nr < 2:
+            print("Existing season, skipping")
+            continue
+
+        desc = {
+            "label_en" : f"Zomergasten season {season_nr} ({year})",
+            "label_nl" : f"Zomergasten seizoen {season_nr} ({year})",
+            "description_en" : f"Season {season_nr} of the Dutch talk show 'Zomergasten', as broadcasted by VPRO in {year}",
+            "description_nl" : f"Seizoen {season_nr} van het VPRO-televisieprogramma 'Zomergasten', uitgezonden in {year}",
+            "aliases_en" : [
+                f"Zomergasten {year}",
+                f"Zomergasten season {season_nr}"
+            ],
+            "aliases_nl" : [
+                f"Zomergasten {year}",
+                f"Zomergasten seizoen {season_nr}"
+            ]
+        }
+
+        item = WikidataItem(
+            summary = f"Creating new item for the Zomergasten season {season_nr}",
+            labels = {
+                "en" : desc["label_en"],
+                "nl" : desc["label_nl"]
+            },
+            descriptions = {
+                "en" : desc["description_en"],
+                "nl" : desc["description_nl"]
+            },
+            aliases = {
+                "en" : desc["aliases_en"],
+                "nl" : desc["aliases_nl"]
+            }
+        )
+
+        item.add_item_claim(Props.INSTANCE_OF, Items.TV_SERIES_SEASON)
+        item.add_item_claim(Props.PART_OF_SERIES, Items.ZOMERGASTEN, qualifiers = [
+            item.get_string_claim(Props.SERIES_ORDINAL, str(season_nr))
+        ])
+        item.add_item_claim(Props.PRESENTER, presenter_qid,
+            references = get_ref(item)
+        )
+        item.add_time_claim(
+            Props.PUB_DATE,
+            pywikibot.WbTime(
+                year = year
+            ),
+            references = get_ref(item)
+        )
+        item.add_item_claim(Props.GENRE, Items.TALK_SHOW)
+        item.add_item_claim(Props.ORIGINAL_BROADCASTER, Items.VPRO)
+        item.add_item_claim(Props.COUNTRY_OF_ORIGIN, Items.NETHERLANDS)
+        item.add_item_claim(Props.LANGUAGE_SHOW, Items.DUTCH)
+        item.add_item_claim(Props.DISTRIBUTED_BY, Items.NPO)
+        item.add_quantity_claim(Props.NR_OF_EPISODES, episodes_count,
+            references = get_ref(item)
+        )
+
+        sys.exit()
+
+def create_episodes():
     PATH = str(Path(__file__).parent)
     seasons = Knead(PATH + "/data/zomergasten/zomergasten.json").data()
 
@@ -24,6 +102,9 @@ def main():
     for season in seasons:
         print()
         print(f"Handling season #{season['season_nr']}")
+
+        handle_season(season)
+
         year = season["year"]
         presenter_name = season["presenter"]["title"]
         presenter_qid = season["presenter"]["qid"]
@@ -101,7 +182,5 @@ def main():
             item.add_item_claim(Props.LANGUAGE_SHOW, Items.DUTCH)
             item.add_item_claim(Props.DISTRIBUTED_BY, Items.NPO)
 
-            # sys.exit()
-
 if __name__ == "__main__":
-    main()
+    create_seasons()
