@@ -1,3 +1,5 @@
+from datetime import datetime
+import locale
 import re
 
 CIRCA = re.compile("^(?:ca|circa|omstreeks|rond)\.? (\d{4})$")
@@ -12,6 +14,27 @@ def check(regex, string):
         return matches[0]
     else:
         return None
+
+"""
+Parses ISO 8601 formatted dates (without time, e.g. 2001-03-09) to
+day, month and year, and also to English and Dutch friendly strings
+"""
+def parse_isodate(isodate):
+    date = datetime.strptime(isodate, "%Y-%m-%d")
+
+    locale.setlocale(locale.LC_TIME, "en_US")
+    en = date.strftime("%B %-d, %Y")
+    locale.setlocale(locale.LC_TIME, "nl_NL")
+    nl = date.strftime("%-d %B %Y")
+
+    return {
+        "day" : date.day,
+        "en" : en,
+        "iso" : isodate,
+        "month" : date.month,
+        "nl" : nl,
+        "year" : date.year
+    }
 
 def parse_year_nl_single(date):
     century = check(CENTURY, date)

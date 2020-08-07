@@ -1,11 +1,9 @@
 from dataknead import Knead
-from datetime import datetime
 from pathlib import Path
 from pywikibot import WbTime
+from util.dates import parse_isodate
 from util.skiplist import Skiplist
-from util.utils import site
 from util.wikidata import Props, Items, WikidataItem
-import locale
 import pywikibot
 import sys
 
@@ -14,23 +12,6 @@ def get_ref(item):
         item.get_item_claim(Props.IMPORTED_FROM, Items.WIKIPEDIA_NL),
         item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=56861509")
     ]
-
-def parse_date(isodate):
-    date = datetime.strptime(isodate, "%Y-%m-%d")
-
-    locale.setlocale(locale.LC_TIME, "en_US")
-    en = date.strftime("%B %d, %Y")
-    locale.setlocale(locale.LC_TIME, "nl_NL")
-    nl = date.strftime("%d %B %Y")
-
-    return {
-        "day" : date.day,
-        "en" : en,
-        "iso" : isodate,
-        "month" : date.month,
-        "nl" : nl,
-        "year" : date.year
-    }
 
 def main():
     PATH = str(Path(__file__).parent)
@@ -54,9 +35,9 @@ def main():
             print("----" * 20)
             print()
             print(f"Handling episode #{episode_nr}, guest {guest_name}")
-            date = parse_date(guest["date_parsed"])
+            date = parse_isodate(guest["date_parsed"])
 
-            if episode_nr < 2:
+            if episode_nr < 8:
                 print("Already handled, skipping")
                 continue
 
@@ -99,10 +80,6 @@ def main():
             item.add_item_claim(Props.PART_OF_SERIES, Items.ZOMERGASTEN, qualifiers = [
                 item.get_string_claim(Props.SERIES_ORDINAL, str(episode_nr))
             ])
-            item.add_item_claim(Props.GENRE, Items.TALK_SHOW)
-            item.add_item_claim(Props.ORIGINAL_BROADCASTER, Items.VPRO)
-            item.add_item_claim(Props.COUNTRY_OF_ORIGIN, Items.NETHERLANDS)
-            item.add_item_claim(Props.LANGUAGE_SHOW, Items.DUTCH)
             item.add_item_claim(Props.PRESENTER, presenter_qid,
                 references = get_ref(item)
             )
@@ -118,9 +95,13 @@ def main():
             item.add_item_claim(Props.TALK_SHOW_GUEST, guest_qid,
                 references = get_ref(item)
             )
+            item.add_item_claim(Props.GENRE, Items.TALK_SHOW)
+            item.add_item_claim(Props.ORIGINAL_BROADCASTER, Items.VPRO)
+            item.add_item_claim(Props.COUNTRY_OF_ORIGIN, Items.NETHERLANDS)
+            item.add_item_claim(Props.LANGUAGE_SHOW, Items.DUTCH)
             item.add_item_claim(Props.DISTRIBUTED_BY, Items.NPO)
 
-            sys.exit()
+            # sys.exit()
 
 if __name__ == "__main__":
     main()
