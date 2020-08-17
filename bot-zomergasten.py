@@ -3,6 +3,7 @@ from pathlib import Path
 from pywikibot import WbTime
 from util.dates import parse_isodate
 from util.skiplist import Skiplist
+from util.utils import wbtime_now
 from util.wikidata import Props, Items, WikidataItem
 import pywikibot
 import sys
@@ -12,6 +13,37 @@ def get_ref(item):
         item.get_item_claim(Props.IMPORTED_FROM, Items.WIKIPEDIA_NL),
         item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=56861509")
     ]
+
+def add_sites():
+    PATH = str(Path(__file__).parent)
+    sites = Knead(PATH + "/data/zomergasten/guest-sites.csv").data()
+
+    for site in sites:
+        qid = site["qid"]
+        url = site["url"]
+        name = site["guest"]
+
+        print()
+        print(f"Now handling {qid} / {name}")
+
+        item = WikidataItem(qid)
+        claims = item.get_claims()
+
+        if Props.OFFICIAL_WEBSITE in claims:
+            print("Already got a site, skip")
+            continue
+
+        item.add_url_claim(Props.OFFICIAL_WEBSITE, url,
+            qualifiers = [
+                item.get_item_claim(Props.LANGUAGE_WORK, Items.DUTCH)
+            ],
+
+            references = [
+                item.get_claim(Props.RETRIEVED, wbtime_now()),
+                item.get_url_claim(Props.REF_URL, "https://www.vpro.nl/programmas/zomergasten/a-z.html"),
+                item.get_item_claim(Props.LANGUAGE_WORK, Items.DUTCH)
+            ]
+        )
 
 def match_seasons():
     PATH = str(Path(__file__).parent)
@@ -255,4 +287,4 @@ def create_episodes():
             item.add_item_claim(Props.DISTRIBUTED_BY, Items.NPO)
 
 if __name__ == "__main__":
-    match_seasons()
+    add_sites()

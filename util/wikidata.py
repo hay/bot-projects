@@ -9,6 +9,7 @@ class Props:
     CATALOG_CODE = "P528"
     CCONTEXT = "P8296"
     CCREATOR = "P6241"
+    COMMEMORATES = "P547"
     COORDINATES = "P625"
     COORDINATES_POV = "P1259"
     COUNTRY = "P17"
@@ -27,14 +28,19 @@ class Props:
     GENRE = "P136"
     GTAA = "P1741"
     HAS_WORKS_IN_COLLECTION = "P6379"
+    IMAGE = "P18"
     IMPORTED_FROM = "P143"
     INCEPTION = "P571"
+    INSCRIPTION = "P1684"
     INSTANCE_OF = "P31"
     ISBN_10 = "P957"
     ISBN_13 = "P212"
     LANGUAGE_SHOW = "P364"
     LANGUAGE_WORK = "P407"
     LOCATED_IN = "P131"
+    LOCATED_ON_STREET = "P669"
+    MATERIAL_USED = "P186"
+    NAME = "P2561"
     NAMED_AFTER = "P138"
     NR_OF_EPISODES = "P1113"
     NR_OF_RECORDS = "P4876"
@@ -43,6 +49,7 @@ class Props:
     OFFICIAL_WEBSITE = "P856"
     ORIGINAL_BROADCASTER = "P449"
     OWNED_BY = "P127"
+    PART_OF = "P361"
     PART_OF_SERIES = "P179"
     PAYMENT_ACCEPTED = "P2851"
     PHONE_NUMBER = "P1329"
@@ -62,7 +69,9 @@ class Props:
     SIG_EVENT = "P793"
     START_TIME = "P580"
     STATED_IN = "P248"
+    STREET_ADDRESS = "P6375"
     STREET_KEY = "P1945"
+    STREET_NUMBER = "P670"
     STUDENT_OF = "P1066"
     TALK_SHOW_GUEST = "P5030"
     TITLE = "P1476"
@@ -84,11 +93,13 @@ class Items:
     ALBUM_COVER = "Q1333350"
     AMSTERDAM_MUNIP = "Q9899"
     BAG_BOOK = "Q52084601"
+    BRASS = "Q39782"
     BRIDGE = "Q12280"
     BUILDING_EXPANSION = "Q19841649"
     CIRCA = "Q5727902"
     DUTCH = "Q7411"
     FEMALE = "Q6581072"
+    GUNTER_DEMNIG = "Q195796"
     H_SIERADEN = "Q89929597"
     HUMAN = "Q5"
     JAPANESE_WIKIPEDIA = "Q177837"
@@ -101,10 +112,13 @@ class Items:
     MUSICAL_MAPS = "Q80590524"
     NETHERLANDS = "Q55"
     NPO = "Q15991875"
+    OPENING_CEREMONY = "Q3010369"
     PARK = "Q22698"
     RECONSTRUCTION = "Q1370468"
     RKD = "Q758610"
     SQUARE = "Q174782"
+    STOLPERSTEIN = "Q26703203"
+    STOLPERSTEINE_PROJECT = "Q314003"
     STREET = "Q79007"
     TALK_SHOW = "Q622812"
     TUNNEL = "Q44377"
@@ -257,6 +271,21 @@ class WikidataItem:
         if references:
             print(f"Adding references to this claim: {references}")
             claim.addSources(to_iterable(references))
+
+    def add_commonsmedia(self, prop, filename, qualifiers = None, references = None):
+        claim = pywikibot.Claim(self.repo, prop)
+        commons = pywikibot.Site("commons", "commons")
+        imagelink = pywikibot.Link(filename, source = commons, defaultNamespace = 6)
+        image = pywikibot.ImagePage(imagelink)
+
+        if image.isRedirectPage():
+            image = pywikibot.ImagePage(image.getRedirectTarget())
+
+        if not image.exists():
+            raise Exception(f"Could not find image: {filename}")
+
+        claim.setTarget(image)
+        self.add_claim(claim, qualifiers, references)
 
     def add_coordinate(self, prop, latlon, precision = 0.00001, qualifiers = None, references = None):
         print(f"Adding coordinate: {prop} -> {latlon}")

@@ -21,6 +21,30 @@ def get_link(el):
         "title" : a.get("title")
     }
 
+def get_sites():
+    episodes = Knead("data/zomergasten/episodes.csv").data()
+    sites = Knead("data/zomergasten/sites.json").data()
+    results = []
+
+    for episode in episodes:
+        guest = episode["guestLabel"]
+        guest_url = None
+
+        for site in sites:
+            url, name = site
+
+            if guest == name:
+                guest_url = url
+                break
+
+        results.append({
+            "qid" : episode["item"],
+            "guest" : guest,
+            "url" : guest_url
+        })
+
+    Knead(results).write("data/zomergasten/guest-sites.csv")
+
 def transform():
     with open("data/zomergasten/zomergasten.html") as f:
         soup = BeautifulSoup(f.read(), "lxml")
@@ -71,4 +95,4 @@ def transform():
     Knead(seasons).write("data/zomergasten/zomergasten.json", indent = 4)
 
 if __name__ == "__main__":
-    transform()
+    get_sites()

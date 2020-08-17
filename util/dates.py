@@ -1,4 +1,5 @@
 from datetime import datetime
+from pywikibot import WbTime
 import locale
 import re
 
@@ -35,6 +36,25 @@ def parse_isodate(isodate):
         "nl" : nl,
         "year" : date.year
     }
+
+"""
+This expects a partial ISO8601 date, which will be parsed to either
+year, month or day,
+e.g. 2015 -> 2015, year
+     05-2015 -> may 2015, month
+     07-05-2015 -> may 7th, day
+"""
+def partial_date_to_wbtime(date):
+    if len(date) == 4:
+        return WbTime(year = int(date))
+    elif len(date) == 7:
+        month, year = date.split("-")
+        return WbTime(year = int(year), month = int(month))
+    elif len(date) == 10:
+        day, month, year = date.split("-")
+        return WbTime(day = int(day), month = int(month), year = int(year))
+    else:
+        raise TypeError(f"Invalid date to parse: {date}")
 
 def parse_year_nl_single(date):
     century = check(CENTURY, date)

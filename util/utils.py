@@ -1,9 +1,12 @@
 from datetime import datetime
 from pathlib import Path
-import pywikibot, time, json, os, re
+from urllib import parse
+# import pywikibot, time, json, os, re
+import json
+import os
 
-site = pywikibot.Site("wikidata", "wikidata")
-test_site = pywikibot.Site("test", "wikidata")
+# site = pywikibot.Site("wikidata", "wikidata")
+# test_site = pywikibot.Site("test", "wikidata")
 
 PATH = os.path.realpath(
     os.path.join(
@@ -14,17 +17,21 @@ PATH = os.path.realpath(
 def chunk(lst, size):
     return [ lst[i:i + size] for i in range(0, len(lst), size) ]
 
-def wbtime_now():
-    now = datetime.now()
+def dd(obj):
+    print(json.dumps(obj, indent = 4))
 
-    return pywikibot.WbTime(
-        year = now.year, month = now.month, day = now.day
-    )
+def parse_urlargs(url):
+    query = parse.parse_qs(parse.urlparse(url).query)
+    return {k:v[0] if v and len(v) == 1 else v for k,v in query.items()}
 
 def sleep(seconds = 20):
     # Sleep for a bit
     print("Sleep for %s seconds" % seconds)
     time.sleep(seconds)
 
-def dd(obj):
-    print(json.dumps(obj, indent = 4))
+def wbtime_now():
+    now = datetime.now()
+
+    return pywikibot.WbTime(
+        year = now.year, month = now.month, day = now.day
+    )
