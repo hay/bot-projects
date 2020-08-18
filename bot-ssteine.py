@@ -15,7 +15,7 @@ def add_item(data):
         "description_en" : f"stumbling stone in {location}, the Netherlands",
         "description_nl" : f"struikelsteen in {location}",
         "aliases_nl" : [
-            f"struikelsteen ter nagedachtenis aan {name}",
+            f"struikelsteen ter herinnering aan {name}",
         ]
     }
 
@@ -81,7 +81,7 @@ def main():
 
     for item in items:
         add_item(item)
-        sys.exit()
+        # sys.exit()
 
 if __name__ == "__main__":
     main()
