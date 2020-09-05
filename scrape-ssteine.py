@@ -69,6 +69,7 @@ def parse_pages(html_path):
             "location_qid" : None,
             "inception" : None,
             "street" : None,
+            "street_qid" : None,
             "street_nr" : None,
             "url" : None
         })
@@ -80,8 +81,13 @@ def parse_pages(html_path):
 if __name__ == "__main__":
     action, arg = sys.argv[1], sys.argv[2]
 
+    if len(sys.argv) == 4:
+        arg2 = sys.argv[3]
+    else:
+        arg2 = None
+
     if action == "scrape":
-        get_category_pages(arg)
+        get_category_pages(arg, arg2)
     elif action == "parse":
         path = BASE_PATH / arg
         parse_pages(path)

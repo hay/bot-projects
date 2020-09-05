@@ -41,18 +41,20 @@ def parse_isodate(isodate):
 This expects a partial ISO8601 date, which will be parsed to either
 year, month or day,
 e.g. 2015 -> 2015, year
-     05-2015 -> may 2015, month
-     07-05-2015 -> may 7th, day
+     2015-05 -> may 2015, month
+     2015-05-07 -> may 7th, day
 """
 def partial_date_to_wbtime(date):
+    print(f"Parsing partial date to wbtime {date}")
+
     if len(date) == 4:
         return WbTime(year = int(date))
     elif len(date) == 7:
-        month, year = date.split("-")
+        year, month = date.split("-")
         return WbTime(year = int(year), month = int(month))
     elif len(date) == 10:
-        day, month, year = date.split("-")
-        return WbTime(day = int(day), month = int(month), year = int(year))
+        year, month, day = date.split("-")
+        return WbTime(year = int(year), month = int(month), day = int(day))
     else:
         raise TypeError(f"Invalid date to parse: {date}")
 
@@ -82,3 +84,10 @@ def parse_year_nl(date):
     tokens = [t.strip() for t in TOKENS.split(date)]
     parsed_tokens = [parse_year_nl_single(t) for t in tokens]
     return [t for t in parsed_tokens if t]
+
+def wbtime_now():
+    now = datetime.now()
+
+    return WbTime(
+        year = now.year, month = now.month, day = now.day
+    )

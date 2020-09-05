@@ -28,10 +28,3 @@ def sleep(seconds = 20):
     # Sleep for a bit
     print("Sleep for %s seconds" % seconds)
     time.sleep(seconds)
-
-def wbtime_now():
-    now = datetime.now()
-
-    return pywikibot.WbTime(
-        year = now.year, month = now.month, day = now.day
-    )
