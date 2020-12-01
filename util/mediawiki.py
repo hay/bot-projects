@@ -12,11 +12,50 @@ class MediawikiApi:
             params["format"] = "json"
 
         req = requests.get(self.api_endpoint, params = params)
+        print(f"[MediawikiApi] did call {req.url}")
 
         if req.status_code != 200:
             raise Exception(f"Invalid status code: {req.status_code}")
 
         return req.json()
+
+    def check_query(self, key, data):
+        if "query" not in data:
+            raise Exception("No query")
+
+        if key not in data["query"]:
+            raise Exception("No categorymembers")
+
+class AllPages(MediawikiApi):
+    def __init__(self, endpoint):
+        self.api_endpoint = endpoint
+
+    def iterate_pages(self):
+        apcontinue = None
+
+        while True:
+            payload = {
+                "action" : "query",
+                "list" : "allpages",
+                "apfilterredir" : "nonredirects",
+                "aplimit" : 500,
+                "format" : "json"
+            }
+
+            if apcontinue:
+                payload["apcontinue"] = apcontinue
+
+            data = self.call(payload)
+            self.check_query("allpages", data)
+
+            for page in data["query"]["allpages"]:
+                yield page
+
+            if "continue" in data:
+                apcontinue = data["continue"]["apcontinue"]
+            else:
+                print("seems we're done")
+                break
 
 class CategoryMembers(MediawikiApi):
     def __init__(self, project, lang, category):
@@ -44,10 +83,5 @@ class CategoryMembers(MediawikiApi):
             "cmlimit" : 500
         })
 
-        if "query" not in data:
-            raise Exception("No query")
-
-        if "categorymembers" not in data["query"]:
-            raise Exception("No categorymembers")
-
+        self.check_query("categorymembers", data)
         self.data = data["query"]["categorymembers"]
