@@ -1,45 +1,29 @@
-from dataknead import Knead
 from pathlib import Path
-from util.skiplist import Skiplist
-from util.wikidata import Props, Items, WikidataItem
-import pywikibot
+from util.bot import Bot
+from util.wikidata import Props, Items
 import sys
 
 PATH = str(Path(__file__).parent.resolve())
 
 def main():
-    items = Knead(PATH + "/data/reliwiki/rmm.csv").data()
-    skiplist = Skiplist("projects/skiplists/reliwiki-rmm.txt")
+    csvpath = PATH + "/data/reliwiki/rmm.csv"
+    bot = Bot("reliwiki-rmm", datapath = csvpath, run_once = True)
 
-    for index, item in enumerate(items):
-        print(item)
-        qid = item["qid"]
-        reliwiki = item["pageid"]
-        print()
-        print(f"#{index} / #{len(items)}")
-        print(f"Handling {qid} / {reliwiki}")
-
-        if skiplist.has(qid):
-            print(f"{qid} in skiplist, skipping")
-            continue
-
-        wd_item = WikidataItem(qid)
-        claims = wd_item.get_claims()
+    for job in bot.iterate():
+        reliwiki = job.data["pageid"]
+        claims = job.item.get_claims()
 
         if Props.RELIWIKI in claims:
             print("This item already has a Reliwiki ID, skipping")
             continue
 
-        wd_item.add_string_claim(
+        job.item.add_string_claim(
             Props.RELIWIKI,
             reliwiki,
             references = [
-                wd_item.get_item_claim(Props.INFERRED_FROM, Items.RIJKSMONUMENT_ID)
+                job.item.get_item_claim(Props.INFERRED_FROM, Items.RIJKSMONUMENT_ID)
             ]
         )
-
-        skiplist.add(qid)
-        sys.exit()
 
 if __name__ == "__main__":
     main()
