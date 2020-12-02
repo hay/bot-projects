@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
 from bs4 import BeautifulSoup
 from dataknead import Knead
+from multiprocessing.dummy import Pool
 from pathlib import Path
 from time import sleep
 from util.mediawiki import AllPages
@@ -57,6 +59,13 @@ def fetch_pages():
         print("Sleep for 3 second")
         sleep(3)
 
+def iter_html():
+    for p in Path("data/reliwiki/html").glob("*.html"):
+        yield {
+            "id" : p.stem,
+            "path" : str(p)
+        }
+
 def parse_page(path):
     print(f"Parsing {path}")
 
@@ -65,6 +74,11 @@ def parse_page(path):
 
     # I guess the first table in mw-content-text is always the infobox
     table = soup.select_one("#mw-content-text table")
+
+    if not table:
+        print("Could not find table")
+        return None
+
     infobox = {
         "coordinates" : None,
         "pageid" : Path(path).stem,
@@ -126,13 +140,32 @@ def parse_pages():
     )
 
 def process_pages():
-    churches = []
-
-    for path in Path("data/reliwiki/html").glob("*.html"):
-        data = parse_page(path)
-        churches.append(data)
-
+    p = Pool(4)
+    churches = p.map(parse_page, paths)
     Knead(churches).write("data/reliwiki/churches_data.csv")
+
+def process_rmm():
+    items = []
+    qids = {i["rmm"]:i["item"] for i in Knead("data/reliwiki/rmm-all.csv").data()}
+
+    for path in iter_html():
+        with open(path["path"]) as f:
+            matches = list(set(RMM_ID.findall(f.read())))
+
+        if len(matches) == 0:
+            continue
+
+        for rmm in matches:
+            items.append({
+                "pageid" : path["id"],
+                "rmm" : rmm,
+                "qid" : qids.get(rmm, None)
+            })
+
+    Knead(items).write(
+        "data/reliwiki/rmm.csv",
+        fieldnames = ["pageid", "rmm", "qid"]
+    )
 
 def scrape_pages():
     churches = []
@@ -144,4 +177,4 @@ def scrape_pages():
 
     Knead(churches).write("data/reliwiki/pages.json")
 
-process_pages();
+process_rmm()
