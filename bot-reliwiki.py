@@ -1,13 +1,12 @@
 from pathlib import Path
 from util.bot import Bot
 from util.wikidata import Props, Items
-import sys
 
 PATH = str(Path(__file__).parent.resolve())
 
 def main():
     csvpath = PATH + "/data/reliwiki/rmm.csv"
-    bot = Bot("reliwiki-rmm", datapath = csvpath, run_once = True)
+    bot = Bot("reliwiki-rmm", datapath = csvpath, run_once = False)
 
     for job in bot.iterate():
         reliwiki = job.data["pageid"]

@@ -8,7 +8,6 @@ class BotJob:
         self.data = data
         self.item = item
 
-
 class Bot:
     def __init__(self, botid, datapath, run_once = False):
         print(f"Setting up new bot '{botid}' with datapath '{datapath}'")
@@ -20,6 +19,10 @@ class Bot:
 
     def iterate(self):
         for index, item in enumerate(self.data):
+            if "qid" not in item or item["qid"] == "":
+                print(f"This item has no QID, skipping, {item}")
+                continue
+
             qid = item["qid"]
             print(f"#{index + 1} / #{len(self.data)} / {qid}")
             print(f"Data: {item}")

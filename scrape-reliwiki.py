@@ -156,6 +156,10 @@ def process_rmm():
             continue
 
         for rmm in matches:
+            if rmm not in qids:
+                print(f"No QID for pageid {path['id']} (RMM {rmm})")
+                continue
+
             items.append({
                 "pageid" : path["id"],
                 "rmm" : rmm,
