@@ -15,6 +15,62 @@ API_ENDPOINT = "http://reliwiki.nl/api.php"
 RMM_ID = re.compile("https://monumentenregister.cultureelerfgoed.nl/monumenten/(\d{1,6})")
 TITLE = re.compile("([^,]+),([^-–]+)[-|–](.+)")
 
+def cleanup_churches():
+    class Item:
+        def __init__(self, item):
+            self.item = item
+
+        def get(self, keys):
+            for key in keys:
+                if key in self.item:
+                    return self.item[key]
+
+            return None
+
+        def __getitem__(self, attr):
+            if attr in self.item:
+                return self.item[attr]
+
+            # Two common typos are having a space before the colon and the first
+            # letter not being capitalized, so accomodate for those instances
+            options = [
+                attr.replace(" :", ":"),
+                attr.lower()
+            ];
+
+            for key in options:
+                if key in self.item:
+                    return self.item[key]
+
+            return None
+
+    def cleanup(church):
+        item = Item(church)
+
+        return {
+            "pageid" : item["pageid"],
+            "gemeente" : item["Gemeente:"],
+            "name" : item["Naam kerk:"],
+            "objectname" : item["Naam object:"],
+            "zipcode" : item["Postcode:"],
+            "sonneveld" : item.get([
+                "Inventarisatienummer:", "ID nummer:", "Inventarisnr.:", "Sonneveld ID:",
+                "Inventarisatienummer :"
+            ]),
+            "use" : item["Huidige bestemming:"],
+            "denomination" : item["Genootschap:"],
+            "rijksmonument" : item["rijksmonument"],
+            "coordinates" : item["coordinates"],
+            "address" : item["Adres:"],
+            "architect" : item["Architect:"],
+            "place" : item["Plaats:"],
+            "year_use" : item.get(["Jaar ingebruikname:", "Bouwja(a)r(en):"]),
+            "original_use" : item["Oorspronkelijke bestemming:"],
+            "monument" : item["Monument status:"]
+        }
+
+    return Knead("data/reliwiki/churches_data.json").map(cleanup).write("data/reliwiki/churches_clean.csv")
+
 def create_catalog():
     catalog = open("data/reliwiki/catalog.tsv", "w")
 
@@ -66,8 +122,38 @@ def iter_html():
             "path" : str(p)
         }
 
+def process_dupes():
+    items = {}
+    qids = []
+    dupes = []
+
+    # First dedupe by QID
+    for item in Knead("data/reliwiki/query.csv").data():
+        if item["item"] not in qids:
+            reliwiki = item["reliwiki"]
+
+            if reliwiki not in items:
+                items[reliwiki] = [ item ]
+            else:
+                items[reliwiki].append(item)
+
+            qids.append(item["item"])
+
+    for values in items.values():
+        if len(values) > 1:
+            dupes = dupes + values
+
+    Knead(dupes).write("data/reliwiki/dupes.csv", fieldnames = [
+        "item", "reliwiki", "itemLabel", "itemDescription", "instanceLabel", "instance"
+    ])
+
 def parse_page(path):
     print(f"Parsing {path}")
+    json_path = Path(path).with_suffix(".json")
+
+    if json_path.exists():
+        print(f"Got JSON file, returning that: {json_path}")
+        return Knead(str(json_path)).data()
 
     with open(path) as f:
         soup = BeautifulSoup(f.read(), "lxml")
@@ -87,6 +173,10 @@ def parse_page(path):
 
     for tr in table.select('tr[valign="top"]'):
         td = tr.select("td")
+
+        if len(td) < 2:
+            continue
+
         key = td[0].get_text().strip()
         val = td[1].get_text().strip()
         infobox[key] = val
@@ -110,6 +200,9 @@ def parse_page(path):
             infobox["coordinates"] = f"{loc['lat']},{loc['lon']}"
 
     infobox["rijksmonument"] = ",".join(infobox["rijksmonument"])
+
+    Knead(infobox).write(json_path)
+    print(f"Written {json_path}")
 
     return infobox
 
@@ -140,9 +233,14 @@ def parse_pages():
     )
 
 def process_pages():
-    p = Pool(4)
-    churches = p.map(parse_page, paths)
-    Knead(churches).write("data/reliwiki/churches_data.csv")
+    churches = []
+    for path in Path("data/reliwiki/html/").glob("*.html"):
+        data = parse_page(path)
+
+        if data:
+            churches.append(data)
+
+    Knead(churches).write("data/reliwiki/churches_data.json")
 
 def process_rmm():
     items = []
@@ -181,4 +279,8 @@ def scrape_pages():
 
     Knead(churches).write("data/reliwiki/pages.json")
 
-process_rmm()
+def test():
+    print("test")
+
+if sys.argv[1] in globals():
+    globals()[sys.argv[1]]()

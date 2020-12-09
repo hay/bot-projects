@@ -63,6 +63,7 @@ class Props:
     PRESENTER = "P371"
     PUB_DATE = "P577"
     REF_URL = "P854"
+    RELIGION = "P140"
     RELIWIKI = "P8897"
     RETRIEVED = "P813"
     RKD_ARTISTS = "P650"
@@ -70,6 +71,7 @@ class Props:
     SEASON = "P4908"
     SERIES_ORDINAL = "P1545"
     SIG_EVENT = "P793"
+    SONNEVELD = "P8911"
     START_TIME = "P580"
     STATED_IN = "P248"
     STREET_ADDRESS = "P6375"
@@ -118,6 +120,7 @@ class Items:
     OPENING_CEREMONY = "Q3010369"
     PARK = "Q22698"
     RECONSTRUCTION = "Q1370468"
+    RELIWIKI = "Q1920729"
     RIJKSMONUMENT_ID = "Q103567620"
     RKD = "Q758610"
     SQUARE = "Q174782"
@@ -157,7 +160,6 @@ class Query:
         self.query = query
         self.items = []
         self.results = []
-        self.run()
 
     @classmethod
     def fromClaim(cls, prop, value):
@@ -169,7 +171,23 @@ class Query:
     def getQid(cls, uri):
         return uri.replace(cls.NAMESPACE, "")
 
-    def run(self):
+    def iter_results(self):
+        results = self._run()
+
+        for result in results:
+            item = {}
+
+            for key, data in result.items():
+                val = data.get("value", None)
+
+                if isinstance(val, str) and val.startswith("http://www.wikidata.org/entity/"):
+                    val = self.getQid(val)
+
+                item[key] = val
+
+            yield item
+
+    def _run(self):
         print(f"Running a SPARQL Query")
 
         req = requests.get(self.ENDPOINT, params = {
@@ -181,21 +199,16 @@ class Query:
 
         data = req.json()
 
-        self.results = data["results"]["bindings"]
+        return data["results"]["bindings"]
+
+    def run(self):
+        self.results = self._run()
 
         self.items = [
             self.getQid(i["item"]["value"]) for i in self.results
         ]
 
         print(f"Got {len(self.items)} items")
-
-class SimpleQuery:
-    def __init__(self, query):
-        self.query = Query("""
-            select ?item where {
-                ?item wdt:
-            }
-        """)
 
 class Done:
     def __init__(self, path):
@@ -261,6 +274,20 @@ class WikidataItem:
 
         if aliases:
             self.edit_aliases(aliases, summary)
+
+    def add_alias(self, alias, lang):
+        aliases = self.get_aliases(lang)
+
+        if not aliases:
+            aliases = []
+
+        aliases.append(alias)
+
+        print(f"Setting these aliases: {aliases})")
+
+        self.edit_aliases({
+            lang : aliases
+        }, f"Adding an extra alias to this item: '{alias}' (language: {lang})")
 
     def add_claim(self, claim, qualifiers = None, references = None):
         print(f'Adding claim {claim}')

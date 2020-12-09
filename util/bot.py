@@ -1,5 +1,5 @@
 from dataknead import Knead
-from util.wikidata import WikidataItem
+from util.wikidata import WikidataItem, Query
 from util.skiplist import Skiplist
 import sys
 
@@ -9,13 +9,21 @@ class BotJob:
         self.item = item
 
 class Bot:
-    def __init__(self, botid, datapath, run_once = False):
-        print(f"Setting up new bot '{botid}' with datapath '{datapath}'")
+    def __init__(self, botid, datapath = None, sparql = None, run_once = False, qid_key = "qid"):
+        print(f"Setting up new bot '{botid}'")
+
+        if (not datapath) and (not sparql):
+            raise Error("No datapath and no sparql")
+
         self.id = botid
-        self.datapath = datapath
-        self.data = Knead(self.datapath).data()
         self.run_once = run_once
         self.skiplist = Skiplist(f"projects/skiplists/{self.id}.txt")
+
+        if datapath:
+            self.data = Knead(datapath).data()
+        elif sparql:
+            query = Query(sparql)
+            self.data = list(query.iter_results())
 
     def iterate(self):
         for index, item in enumerate(self.data):
@@ -24,7 +32,8 @@ class Bot:
                 continue
 
             qid = item["qid"]
-            print(f"#{index + 1} / #{len(self.data)} / {qid}")
+            print()
+            print(f"#{index + 1}/{len(self.data)} / {qid}")
             print(f"Data: {item}")
             print()
 

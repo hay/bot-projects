@@ -1,10 +1,101 @@
+from dataknead import Knead
 from pathlib import Path
 from util.bot import Bot
-from util.wikidata import Props, Items
+from util.wikidata import Props, Items, Query
+import pywikibot
+import sys
 
 PATH = str(Path(__file__).parent.resolve())
+RETRIEVED_DATE = pywikibot.WbTime(year = 2020, month = 12, day = 2)
 
-def main():
+class Datasheet:
+    def __init__(self, path, index):
+        self.data = Knead(path, has_header = True).data()
+        self.keys = {i[index]:i for i in self.data}
+
+    def __getitem__(self, key):
+        if key in self.keys:
+            return self.keys[key]
+        else:
+            return None
+
+def get_refs(item, reliwiki_id):
+    return [
+        item.get_item_claim(Props.LANGUAGE_WORK, Items.DUTCH),
+        item.get_item_claim(Props.STATED_IN, Items.RELIWIKI),
+        item.get_claim(Props.RETRIEVED, RETRIEVED_DATE),
+        item.get_url_claim(Props.REF_URL, f"https://reliwiki.nl/index.php?curid={reliwiki_id}")
+    ]
+
+def check_prop(data, key, claims, prop):
+    if prop in claims:
+        print(f"Property {prop} already in claims")
+        return False
+    elif not data[key]:
+        print(f"No {key} ({prop}) in data")
+        return False
+    else:
+        print(f"Adding {key}")
+        return True
+
+def add_info():
+    # Only church buildings for now
+    SPARQL = "select ?qid ?reliwiki where { ?qid wdt:P8897 ?reliwiki; wdt:P31 wd:Q16970. }"
+
+    churches = Datasheet(PATH + "/data/reliwiki/churches_clean.csv", "pageid")
+    bot = Bot("reliwiki-info", run_once = True, sparql = SPARQL)
+
+    for job in bot.iterate():
+        # First get the church
+        reliwiki = job.data["reliwiki"]
+        church = churches[reliwiki]
+        claims = job.item.get_claims()
+
+        if not church:
+            print(f"Could not find church with ID {reliwiki}, skipping")
+            continue
+        else:
+            print(f"Found church data: {church}")
+
+        if "name" in church:
+            # Check if this name already exists in labels and aliases
+            name = church["name"].strip()
+            item_names = [job.item.get_label("nl")] + job.item.get_aliases("nl")
+            print("Item is known as:", item_names)
+
+            if name not in item_names:
+                print(f"Name {name} does not occur in the list, adding...")
+                job.item.add_alias(name, "nl")
+            else:
+                print(f"Name {name} is already in this list.")
+
+        if check_prop(data = church, key = "sonneveld", prop = Props.SONNEVELD, claims = claims):
+            job.item.add_string_claim(
+                Props.SONNEVELD, church["sonneveld"], references = get_refs(job.item, reliwiki)
+            )
+
+        if check_prop(data = church, key = "coordinates", prop = Props.COORDINATES, claims = claims):
+            coord = church["coordinates"].split(",")
+            job.item.add_coordinate(
+                Props.COORDINATES, coord, references = get_refs(job.item, reliwiki)
+            )
+
+        if check_prop(data = church, key = "zipcode", prop = Props.ZIP, claims = claims):
+            job.item.add_string_claim(
+                Props.ZIP, church["zipcode"], references = get_refs(job.item, reliwiki)
+            )
+
+        if check_prop(data = church, key = "address", prop = Props.STREET_ADDRESS, claims = claims):
+            job.item.add_monoling_claim(
+                Props.STREET_ADDRESS, church["address"], "nl", references = get_refs(job.item, reliwiki)
+            )
+
+        if check_prop(data = church, key = "denomination_qid", prop = Props.RELIGION, claims = claims):
+            job.item.add_item_claim(
+                Props.RELIGION, church["denomination_qid"], references = get_refs(job.item, reliwiki)
+            )
+
+def add_prop():
     csvpath = PATH + "/data/reliwiki/rmm.csv"
     bot = Bot("reliwiki-rmm", datapath = csvpath, run_once = False)
 
@@ -25,4 +116,4 @@ def main():
         )
 
 if __name__ == "__main__":
-    main()
+    add_info()
