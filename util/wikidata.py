@@ -261,6 +261,8 @@ class WikidataItem:
             # Check if this is a redirect, and if so, get the real item
             print("This is a redirect item, get the target")
             self.item = self.item.getRedirectTarget()
+        elif self.item.isRedirectPage():
+            raise Exception("Redirect page, and follow redirect is not one. Can't edit")
 
         self.item.get()
 

@@ -43,7 +43,7 @@ def add_info():
     SPARQL = "select ?qid ?reliwiki where { ?qid wdt:P8897 ?reliwiki; wdt:P31 wd:Q16970. }"
 
     churches = Datasheet(PATH + "/data/reliwiki/churches_clean.csv", "pageid")
-    bot = Bot("reliwiki-info", run_once = True, sparql = SPARQL)
+    bot = Bot("reliwiki-info", run_once = False , sparql = SPARQL)
 
     for job in bot.iterate():
         # First get the church
@@ -57,10 +57,11 @@ def add_info():
         else:
             print(f"Found church data: {church}")
 
-        if "name" in church:
+        if ("name" in church) and (church["name"].strip() != ""):
             # Check if this name already exists in labels and aliases
             name = church["name"].strip()
-            item_names = [job.item.get_label("nl")] + job.item.get_aliases("nl")
+
+            item_names = job.item.get_labels_aliases()
             print("Item is known as:", item_names)
 
             if name not in item_names:

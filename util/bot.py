@@ -41,7 +41,12 @@ class Bot:
                 print(f"{qid} in skiplist, skipping")
                 continue
 
-            wd_item = WikidataItem(qid)
+            try:
+                wd_item = WikidataItem(qid)
+            except Exception as e:
+                print(f"Exception, not yielding this job: {e}")
+                continue
+
             job = BotJob(data = item, item = wd_item)
             yield job
 
