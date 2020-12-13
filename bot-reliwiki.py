@@ -3,10 +3,12 @@ from pathlib import Path
 from util.bot import Bot
 from util.wikidata import Props, Items, Query
 import pywikibot
+import re
 import sys
 
 PATH = str(Path(__file__).parent.resolve())
 RETRIEVED_DATE = pywikibot.WbTime(year = 2020, month = 12, day = 2)
+YEAR = re.compile("^\d{4}")
 
 class Datasheet:
     def __init__(self, path, index):
@@ -37,6 +39,58 @@ def check_prop(data, key, claims, prop):
     else:
         print(f"Adding {key}")
         return True
+
+def add_architects():
+    datapath = f"{PATH}/data/reliwiki/architects.csv"
+    bot = Bot("reliwiki-architects", datapath = datapath, run_once = True)
+
+    for job in bot.iterate():
+        data = job.data
+
+        if not data["arch1_qid"]:
+            print(f"No architect, skipping")
+            continue
+
+        claims = job.item.get_claims()
+
+        if Props.ARCHITECT in claims:
+            print("Already has an architect, skipping")
+            continue
+
+        # Add the actual data
+        for index in ["1", "2", "3"]:
+            prefix = f"arch{index}"
+
+            if data[f"{prefix}_qid"] == "":
+                continue
+
+            qid = data[f"{prefix}_qid"]
+            qualifiers = []
+
+            if data[f"{prefix}_role_qid"]:
+                qualifiers.append(
+                    job.item.get_item_claim(Props.OBJECT_HAS_ROLE, data[f"{prefix}_role_qid"])
+                )
+
+            if data[f"{prefix}_role_date"]:
+                date = data[f"{prefix}_role_date"]
+                yearstr = YEAR.match(date)
+
+                if yearstr:
+                    year = int(yearstr[0])
+
+                    qualifiers.append(
+                        job.item.get_claim(Props.POINT_IN_TIME, WbTime(year = year))
+                    )
+                else:
+                    print(f"Unparsable year: {date}")
+
+            job.item.add_item_claim(
+                Props.ARCHITECT,
+                qid,
+                qualifiers = qualifiers,
+                references = get_refs(job.item, data["pageid"])
+            )
 
 def add_info():
     # Only church buildings for now
@@ -117,4 +171,4 @@ def add_prop():
         )
 
 if __name__ == "__main__":
-    add_info()
+    add_architects()

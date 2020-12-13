@@ -3,6 +3,7 @@ import requests
 
 class Props:
     APPLIES_TO_PART = "P518"
+    ARCHITECT = "P84"
     BAG_BUILDING = "P5208"
     BAG_PUBSPACE = "P5207"
     CAPACITY = "P1083"
@@ -47,6 +48,7 @@ class Props:
     NR_OF_EPISODES = "P1113"
     NR_OF_RECORDS = "P4876"
     NR_OF_PAGES = "P1104"
+    OBJECT_HAS_ROLE = "P3831"
     OCCUPATION = "P106"
     OFFICIAL_WEBSITE = "P856"
     ORIGINAL_BROADCASTER = "P449"
