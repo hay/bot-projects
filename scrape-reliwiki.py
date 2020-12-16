@@ -235,26 +235,32 @@ def get_pagenames():
 
 def match_coordinates():
     reliwiki = Knead("data/reliwiki/reliwiki-with-coordinates.csv").data()
-    wikidata = Knead("data/reliwiki/wd-with-coordinates.csv").data()
+    wikidata = Knead("data/reliwiki/wd-with-coordinates.csv", has_header = True).data()
     RE_POINT = re.compile("\(([^ ]+) ([^ ]+)\)")
 
-    for r_item in reliwiki:
-        if not "coordinates" in r_item or r_item["coordinates"] == "":
+    matches = []
+
+    # Loop through all Wikidata items, and extract coordinates
+    for index, w_item in enumerate(wikidata):
+        if not "coord" in w_item or w_item["coord"] == "":
             continue
 
-        r_lat, r_lon = r_item["coordinates"].split(",")
-        print(f"Parsing {r_item['pageid']} ({r_item['name']})")
+        w_lon, w_lat = RE_POINT.findall(w_item["coord"])[0]
+        loc = w_item["locationLabel"] + ", " + w_item["adminLabel"]
+        w_label = f"{w_item['itemLabel']}, {loc}"
+        print(f"{index} Parsing {w_item['item']} {w_label}")
 
         shortest = {
             "distance" : 10000,
             "item" : None
         }
 
-        for w_item in wikidata:
-            if not "coord" in w_item or w_item["coord"] == "":
+        # Now loop over all churches in the Reliwiki set and find the best candidate
+        for r_item in reliwiki:
+            if not "coordinates" in r_item or r_item["coordinates"] == "":
                 continue
 
-            w_lon, w_lat = RE_POINT.findall(w_item["coord"])[0]
+            r_lat, r_lon = r_item["coordinates"].split(",")
 
             # Calculate distance
             r_loc = (r_lat, r_lon)
@@ -265,12 +271,25 @@ def match_coordinates():
             if distance < shortest["distance"]:
                 shortest = {
                     "distance" : distance,
-                    "item" : w_item
+                    "item" : r_item
                 }
 
         print("The best candidate for this item is: ", shortest)
 
-        break
+        r_item = shortest["item"]
+        r_label = f"{r_item['name']}, {r_item['place']}, {r_item['address']}"
+
+        matches.append({
+            "qid" : w_item["item"],
+            "reliwiki_id" : r_item["pageid"],
+            "wd_label" : w_label,
+            "reliwiki_label" : r_label,
+            "distance" : shortest["distance"]
+        })
+
+    Knead(matches).write("data/reliwiki/coordinates-matched.csv", fieldnames = [
+        "qid", "reliwiki_id", "wd_label", "reliwiki_label", "distance"
+    ])
 
 def process_dupes():
     items = {}
