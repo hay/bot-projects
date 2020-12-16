@@ -26,6 +26,25 @@ class MediawikiApi:
         if key not in data["query"]:
             raise Exception("No categorymembers")
 
+    def iterate_list(self, list_key, continue_key, payload):
+        is_continue = None
+
+        while True:
+            if is_continue:
+                payload[continue_key] = is_continue
+
+            data = self.call(payload)
+            self.check_query(list_key, data)
+
+            for page in data["query"][list_key]:
+                yield page
+
+            if "continue" in data:
+                is_continue = data["continue"][continue_key]
+            else:
+                print("Seems we're done!")
+                break
+
 class AllPages(MediawikiApi):
     def __init__(self, endpoint):
         self.api_endpoint = endpoint

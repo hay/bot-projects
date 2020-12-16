@@ -1,3 +1,4 @@
+from dataknead import Knead
 from datetime import datetime
 from pathlib import Path
 from urllib import parse
@@ -28,3 +29,23 @@ def sleep(seconds = 20):
     # Sleep for a bit
     print("Sleep for %s seconds" % seconds)
     time.sleep(seconds)
+
+class Datasheet:
+    def __init__(self, path, index):
+        self.path = path
+        self.data = Knead(path, has_header = True).data()
+        self.keys = {i[index]:i for i in self.data}
+
+    def __getitem__(self, key):
+        if key in self.keys:
+            return self.keys[key]
+        else:
+            return None
+
+    def append(self, row):
+        self.data.append(row)
+        self.save()
+
+    def save(self):
+        print("Saving")
+        Knead(self.data).write(self.path)

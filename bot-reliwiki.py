@@ -1,7 +1,10 @@
 from dataknead import Knead
 from pathlib import Path
+from pywikibot import WbTime
 from util.bot import Bot
+from util.utils import Datasheet
 from util.wikidata import Props, Items, Query
+from util.wikipedia import get_permalink
 import pywikibot
 import re
 import sys
@@ -9,17 +12,6 @@ import sys
 PATH = str(Path(__file__).parent.resolve())
 RETRIEVED_DATE = pywikibot.WbTime(year = 2020, month = 12, day = 2)
 YEAR = re.compile("^\d{4}")
-
-class Datasheet:
-    def __init__(self, path, index):
-        self.data = Knead(path, has_header = True).data()
-        self.keys = {i[index]:i for i in self.data}
-
-    def __getitem__(self, key):
-        if key in self.keys:
-            return self.keys[key]
-        else:
-            return None
 
 def get_refs(item, reliwiki_id):
     return [
@@ -40,57 +32,63 @@ def check_prop(data, key, claims, prop):
         print(f"Adding {key}")
         return True
 
+def add_architect(job):
+    data = job.data
+
+    if not data["arch1_qid"]:
+        print(f"No architect, skipping")
+        return
+
+    claims = job.item.get_claims()
+
+    if Props.ARCHITECT in claims:
+        print("Already has an architect, skipping")
+        return
+
+    # Add the actual data
+    for index in ["1", "2", "3"]:
+        prefix = f"arch{index}"
+
+        if data[f"{prefix}_qid"] == "":
+            continue
+
+        qid = data[f"{prefix}_qid"]
+        qualifiers = []
+
+        if data[f"{prefix}_role_qid"]:
+            qualifiers.append(
+                job.item.get_item_claim(Props.OBJECT_HAS_ROLE, data[f"{prefix}_role_qid"])
+            )
+
+        if data[f"{prefix}_role_date"]:
+            date = data[f"{prefix}_role_date"]
+            yearstr = YEAR.match(date)
+
+            if yearstr:
+                year = int(yearstr[0])
+
+                qualifiers.append(
+                    job.item.get_claim(Props.POINT_IN_TIME, WbTime(year = year))
+                )
+            else:
+                print(f"Unparsable year: {date}")
+
+        job.item.add_item_claim(
+            Props.ARCHITECT,
+            qid,
+            qualifiers = qualifiers,
+            references = get_refs(job.item, data["pageid"])
+        )
+
 def add_architects():
     datapath = f"{PATH}/data/reliwiki/architects.csv"
-    bot = Bot("reliwiki-architects", datapath = datapath, run_once = True)
+    bot = Bot("reliwiki-architects", datapath = datapath, run_once = False)
 
     for job in bot.iterate():
-        data = job.data
-
-        if not data["arch1_qid"]:
-            print(f"No architect, skipping")
-            continue
-
-        claims = job.item.get_claims()
-
-        if Props.ARCHITECT in claims:
-            print("Already has an architect, skipping")
-            continue
-
-        # Add the actual data
-        for index in ["1", "2", "3"]:
-            prefix = f"arch{index}"
-
-            if data[f"{prefix}_qid"] == "":
-                continue
-
-            qid = data[f"{prefix}_qid"]
-            qualifiers = []
-
-            if data[f"{prefix}_role_qid"]:
-                qualifiers.append(
-                    job.item.get_item_claim(Props.OBJECT_HAS_ROLE, data[f"{prefix}_role_qid"])
-                )
-
-            if data[f"{prefix}_role_date"]:
-                date = data[f"{prefix}_role_date"]
-                yearstr = YEAR.match(date)
-
-                if yearstr:
-                    year = int(yearstr[0])
-
-                    qualifiers.append(
-                        job.item.get_claim(Props.POINT_IN_TIME, WbTime(year = year))
-                    )
-                else:
-                    print(f"Unparsable year: {date}")
-
-            job.item.add_item_claim(
-                Props.ARCHITECT,
-                qid,
-                qualifiers = qualifiers,
-                references = get_refs(job.item, data["pageid"])
-            )
+        try:
+            add_architect(job)
+        except Exception as e:
+            print(f"Could not finish this job because of an exception: {e}")
 
 def add_info():
     # Only church buildings for now
@@ -150,7 +148,29 @@ def add_info():
                 Props.RELIGION, church["denomination_qid"], references = get_refs(job.item, reliwiki)
             )
 
-def add_prop():
+def add_prop_extlink():
+    csvpath = PATH + "/data/reliwiki/extlinks-clean.csv"
+    bot = Bot("reliwiki-extlink", datapath = csvpath, run_once = False)
+
+    for job in bot.iterate():
+        reliwiki = job.data["pageid"]
+        nlwiki = job.data["nlwiki"]
+        claims = job.item.get_claims()
+
+        if Props.RELIWIKI in claims:
+            print("This item already has a Reliwiki ID, skipping")
+            continue
+
+        job.item.add_string_claim(
+            Props.RELIWIKI,
+            reliwiki,
+            references = [
+                job.item.get_item_claim(Props.IMPORTED_FROM, Items.WIKIPEDIA_NL),
+                job.item.get_url_claim(Props.WM_IMPORT_URL, get_permalink("nl", job.data["nlwiki"]))
+            ]
+        )
+
+def add_prop_rmm():
     csvpath = PATH + "/data/reliwiki/rmm.csv"
     bot = Bot("reliwiki-rmm", datapath = csvpath, run_once = False)
 
@@ -171,4 +191,4 @@ def add_prop():
         )
 
 if __name__ == "__main__":
-    add_architects()
+    add_info()

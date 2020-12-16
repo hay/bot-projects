@@ -20,7 +20,7 @@ class Bot:
         self.skiplist = Skiplist(f"projects/skiplists/{self.id}.txt")
 
         if datapath:
-            self.data = Knead(datapath).data()
+            self.data = Knead(datapath, has_header = True).data()
         elif sparql:
             query = Query(sparql)
             self.data = list(query.iter_results())

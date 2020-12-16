@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 from bs4 import BeautifulSoup
 from dataknead import Knead
+from geopy.distance import distance as geodistance
 from multiprocessing.dummy import Pool
 from pathlib import Path
 from time import sleep
-from util.mediawiki import AllPages
-from util.utils import dd
+from util.mediawiki import AllPages, MediawikiApi
+from util.utils import dd, Datasheet
 import json
 import re
 import requests
@@ -121,6 +122,155 @@ def iter_html():
             "id" : p.stem,
             "path" : str(p)
         }
+
+def match_sitelinks():
+    api = MediawikiApi("wikipedia", "nl")
+    extlinks = Datasheet("data/reliwiki/extlinks.csv", "sitelink")
+
+    for item in Knead("data/reliwiki/sitelinks.csv").data():
+        qid = item["item"]
+        sitelink = item["sitelink"]
+
+        if sitelink == "":
+            continue
+
+        if extlinks[sitelink]:
+            print(f"<{sitelink}> exists, skipping")
+            continue
+
+        print()
+        print(f"Parsing {sitelink}")
+
+        article = sitelink.replace("https://nl.wikipedia.org/wiki/", "")
+
+        links = api.call({
+            "action" : "query",
+            "prop" : "extlinks",
+            "ellimit" : 500,
+            "titles" : article
+        })
+
+        pages = links["query"]["pages"]
+
+        if "-1" in pages:
+            print("Could not find title")
+            continue
+
+        # Get the first hit and loop through all extlinks
+        page = pages[list(pages.keys())[0]]
+
+        found_link = False
+
+        if "extlinks" in page:
+            for link in page["extlinks"]:
+                link_url = link["*"]
+
+                if "reliwiki" in link_url:
+                    print("Found reliwiki")
+
+                    extlinks.append({
+                        "pageid" : page["pageid"],
+                        "title" : page["title"],
+                        "sitelink" : sitelink,
+                        "ext_url" : link_url
+                    })
+
+                    found_link = True
+                else:
+                    print(f"No reliwiki...: {link_url}")
+        else:
+            print("No external links!")
+
+        if not found_link:
+            extlinks.append({
+                "sitelink" : sitelink
+            })
+
+        sleep(1)
+
+def get_exturls():
+    # Nice approach, but this doesn't return web.archive.org urls :(
+    api = MediawikiApi("wikipedia", "nl")
+
+    iterator = api.iterate_list("exturlusage", "eucontinue", {
+        "action" : "query",
+        "list" : "exturlusage",
+        "euquery" : "reliwiki.nl",
+        "eunamespace" : "0",
+        "eulimit" : "500"
+    })
+
+    urls = []
+
+    for page in iterator:
+        print(page)
+        urls.append(page)
+
+    Knead(urls).write("data/reliwiki/exturls.csv")
+
+def get_pagenames():
+    items = []
+    RE_PAGENAME = re.compile("wgPageName\":\"([^\"]+)")
+
+    for path in Path("data/reliwiki/html").glob("*.html"):
+        print(path)
+
+        f = open(path)
+
+        for line in f:
+            if "wgPageName" in line:
+                matches = RE_PAGENAME.findall(line)
+
+                if matches:
+                    items.append({
+                        "pageid" : path.stem,
+                        "pagename" : matches[0]
+                    })
+
+                break
+
+        f.close()
+
+    Knead(items).write("data/reliwiki/extlinks-reliwiki.csv")
+
+def match_coordinates():
+    reliwiki = Knead("data/reliwiki/reliwiki-with-coordinates.csv").data()
+    wikidata = Knead("data/reliwiki/wd-with-coordinates.csv").data()
+    RE_POINT = re.compile("\(([^ ]+) ([^ ]+)\)")
+
+    for r_item in reliwiki:
+        if not "coordinates" in r_item or r_item["coordinates"] == "":
+            continue
+
+        r_lat, r_lon = r_item["coordinates"].split(",")
+        print(f"Parsing {r_item['pageid']} ({r_item['name']})")
+
+        shortest = {
+            "distance" : 10000,
+            "item" : None
+        }
+
+        for w_item in wikidata:
+            if not "coord" in w_item or w_item["coord"] == "":
+                continue
+
+            w_lon, w_lat = RE_POINT.findall(w_item["coord"])[0]
+
+            # Calculate distance
+            r_loc = (r_lat, r_lon)
+            w_loc = (w_lat, w_lon)
+
+            distance = geodistance(r_loc, w_loc).km
+
+            if distance < shortest["distance"]:
+                shortest = {
+                    "distance" : distance,
+                    "item" : w_item
+                }
+
+        print("The best candidate for this item is: ", shortest)
+
+        break
 
 def process_dupes():
     items = {}
@@ -282,5 +432,4 @@ def scrape_pages():
 def test():
     print("test")
 
-if sys.argv[1] in globals():
-    globals()[sys.argv[1]]()
+globals()[sys.argv[1]]()
