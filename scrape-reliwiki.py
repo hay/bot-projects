@@ -5,6 +5,7 @@ from geopy.distance import distance as geodistance
 from multiprocessing.dummy import Pool
 from pathlib import Path
 from time import sleep
+from util.geo import find_shortest_distance
 from util.mediawiki import AllPages, MediawikiApi
 from util.utils import dd, Datasheet
 import json
@@ -234,58 +235,55 @@ def get_pagenames():
     Knead(items).write("data/reliwiki/extlinks-reliwiki.csv")
 
 def match_coordinates():
-    reliwiki = Knead("data/reliwiki/reliwiki-with-coordinates.csv").data()
-    wikidata = Knead("data/reliwiki/wd-with-coordinates.csv", has_header = True).data()
     RE_POINT = re.compile("\(([^ ]+) ([^ ]+)\)")
+
+    def parse_reliwiki(item):
+        if "coordinates" in item and item["coordinates"] != "":
+            lat, lon = item["coordinates"].split(",")
+            item["location"] = (lat, lon)
+        else:
+            item["location"] = None
+
+        item["label"] = f"{item['name']} ({item['place']}, {item['address']})"
+
+        return item
+
+    def parse_wikidata(item):
+        if "coord" in item and item["coord"] != "":
+            lon, lat = RE_POINT.findall(item["coord"])[0]
+            item["location"] = (lat, lon)
+        else:
+            item["location"] = None
+
+        location_label = item["locationLabel"] + ", " + item["adminLabel"]
+        item["label"] = f"{item['itemLabel']} ({location_label})"
+
+        return item
+
+    reliwiki = Knead("data/reliwiki/reliwiki-with-coordinates.csv").map(parse_reliwiki).data()
+    reliwiki_coords = [ i["location"] for i in reliwiki ]
+    wikidata = Knead("data/reliwiki/wd-with-coordinates.csv", has_header = True).map(parse_wikidata).data()
 
     matches = []
 
     # Loop through all Wikidata items, and extract coordinates
     for index, w_item in enumerate(wikidata):
-        if not "coord" in w_item or w_item["coord"] == "":
-            continue
+        print(f"Parsing {w_item['label']}")
 
-        w_lon, w_lat = RE_POINT.findall(w_item["coord"])[0]
-        loc = w_item["locationLabel"] + ", " + w_item["adminLabel"]
-        w_label = f"{w_item['itemLabel']}, {loc}"
-        print(f"{index} Parsing {w_item['item']} {w_label}")
+        index, distance = find_shortest_distance(w_item["location"], reliwiki_coords)
+        r_item = reliwiki[index]
 
-        shortest = {
-            "distance" : 10000,
-            "item" : None
-        }
-
-        # Now loop over all churches in the Reliwiki set and find the best candidate
-        for r_item in reliwiki:
-            if not "coordinates" in r_item or r_item["coordinates"] == "":
-                continue
-
-            r_lat, r_lon = r_item["coordinates"].split(",")
-
-            # Calculate distance
-            r_loc = (r_lat, r_lon)
-            w_loc = (w_lat, w_lon)
-
-            distance = geodistance(r_loc, w_loc).km
-
-            if distance < shortest["distance"]:
-                shortest = {
-                    "distance" : distance,
-                    "item" : r_item
-                }
-
-        print("The best candidate for this item is: ", shortest)
-
-        r_item = shortest["item"]
-        r_label = f"{r_item['name']}, {r_item['place']}, {r_item['address']}"
+        print(f"The best candidate ({distance}) for this item is: ", r_item)
 
         matches.append({
             "qid" : w_item["item"],
             "reliwiki_id" : r_item["pageid"],
-            "wd_label" : w_label,
-            "reliwiki_label" : r_label,
-            "distance" : shortest["distance"]
+            "wd_label" : w_item["label"],
+            "reliwiki_label" : r_item["label"],
+            "distance" : distance
         })
+
+        break
 
     Knead(matches).write("data/reliwiki/coordinates-matched.csv", fieldnames = [
         "qid", "reliwiki_id", "wd_label", "reliwiki_label", "distance"
