@@ -190,5 +190,29 @@ def add_prop_rmm():
             ]
         )
 
+def add_prop_geo():
+    csvpath = PATH + "/data/reliwiki/geo.csv"
+    bot = Bot("reliwiki-geo", datapath = csvpath, run_once = False)
+
+    for job in bot.iterate():
+        reliwiki = job.data["pageid"]
+        claims = job.item.get_claims()
+
+        if Props.RELIWIKI in claims:
+            print("This item already has a Reliwiki ID, skipping")
+            continue
+
+        job.item.add_string_claim(
+            Props.RELIWIKI,
+            reliwiki,
+            references = [
+                job.item.get_item_claim(
+                    Props.BASED_ON_HEURISTIC,
+                    Items.DEDUCED_FROM_COORDINATES
+                )
+            ]
+        )
+
 if __name__ == "__main__":
+    add_prop_geo()
     add_info()

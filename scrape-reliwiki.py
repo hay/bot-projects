@@ -267,10 +267,19 @@ def match_coordinates():
     matches = []
 
     # Loop through all Wikidata items, and extract coordinates
-    for index, w_item in enumerate(wikidata):
+    for nr, w_item in enumerate(wikidata):
         print(f"Parsing {w_item['label']}")
 
-        index, distance = find_shortest_distance(w_item["location"], reliwiki_coords)
+        try:
+            index, distance = find_shortest_distance(
+                w_item["location"],
+                reliwiki_coords,
+                rough = True
+            )
+        except Exception as e:
+            print(f"Woops: {e}")
+            continue
+
         r_item = reliwiki[index]
 
         print(f"The best candidate ({distance}) for this item is: ", r_item)
@@ -282,8 +291,6 @@ def match_coordinates():
             "reliwiki_label" : r_item["label"],
             "distance" : distance
         })
-
-        break
 
     Knead(matches).write("data/reliwiki/coordinates-matched.csv", fieldnames = [
         "qid", "reliwiki_id", "wd_label", "reliwiki_label", "distance"
