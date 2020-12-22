@@ -104,6 +104,7 @@ class Items:
     BRASS = "Q39782"
     BRIDGE = "Q12280"
     BUILDING_EXPANSION = "Q19841649"
+    CHURCH_BUILDING = "Q16970"
     CIRCA = "Q5727902"
     DEDUCED_FROM_COORDINATES = "Q96623327"
     DUTCH = "Q7411"
@@ -213,6 +214,11 @@ class Query:
         ]
 
         print(f"Got {len(self.items)} items")
+
+def claim_exists(prop, value):
+    query = Query.fromClaim(prop, value)
+    query.run()
+    return len(query.items) > 0
 
 class Done:
     def __init__(self, path):
@@ -345,7 +351,14 @@ class WikidataItem:
         claim = self.get_claim(prop, pywikibot.WbQuantity(quantity))
         self.add_claim(claim, qualifiers, references)
 
-    def add_string_claim(self, prop, string, qualifiers = None, references = None):
+    def add_string_claim(
+        self, prop, string, qualifiers = None, references = None,
+        skip_propexists = False
+    ):
+        if self.has_prop(prop):
+            print(f"Item already has property {prop} and skip_propexists is set to True")
+            return
+
         print(f"Adding string claim: {prop} -> {string}")
         claim = self.get_string_claim(prop, string)
         self.add_claim(claim, qualifiers, references)
@@ -469,6 +482,9 @@ class WikidataItem:
                 return True
 
         return False
+
+    def has_prop(self, prop):
+        return prop in self.item.claims
 
     def remove_claim_by_prop(self, prop):
         print(f"Removing item claim by prop: {prop}")

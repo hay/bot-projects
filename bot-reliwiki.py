@@ -3,7 +3,7 @@ from pathlib import Path
 from pywikibot import WbTime
 from util.bot import Bot
 from util.utils import Datasheet
-from util.wikidata import Props, Items, Query
+from util.wikidata import Props, Items, Query, claim_exists, WikidataItem
 from util.wikipedia import get_permalink
 import pywikibot
 import re
@@ -175,19 +175,13 @@ def add_prop_rmm():
     bot = Bot("reliwiki-rmm", datapath = csvpath, run_once = False)
 
     for job in bot.iterate():
-        reliwiki = job.data["pageid"]
-        claims = job.item.get_claims()
-
-        if Props.RELIWIKI in claims:
-            print("This item already has a Reliwiki ID, skipping")
-            continue
-
         job.item.add_string_claim(
             Props.RELIWIKI,
-            reliwiki,
+            job.data["pageid"],
             references = [
                 job.item.get_item_claim(Props.INFERRED_FROM, Items.RIJKSMONUMENT_ID)
-            ]
+            ],
+            skip_propexists = True
         )
 
 def add_prop_geo():
@@ -195,24 +189,94 @@ def add_prop_geo():
     bot = Bot("reliwiki-geo", datapath = csvpath, run_once = False)
 
     for job in bot.iterate():
-        reliwiki = job.data["pageid"]
-        claims = job.item.get_claims()
-
-        if Props.RELIWIKI in claims:
-            print("This item already has a Reliwiki ID, skipping")
-            continue
-
         job.item.add_string_claim(
             Props.RELIWIKI,
-            reliwiki,
+            job.data["pageid"],
             references = [
                 job.item.get_item_claim(
                     Props.BASED_ON_HEURISTIC,
                     Items.DEDUCED_FROM_COORDINATES
                 )
-            ]
+            ],
+            skip_propexists = True
         )
 
+def create_new():
+    items = Knead(PATH + "/data/reliwiki/new-churches.csv", has_header = True).data()
+    CITY = "Amsterdam"
+
+    for church in items:
+        print()
+        print(f"Creating new church", church)
+        pageid = church["pageid"]
+
+        # Last, final check if this church doesn't exist
+        if claim_exists(Props.RELIWIKI, f'"{pageid}"'):
+            print(f"This Reliwiki ID exists, skipping")
+            continue
+
+        name = church["name"]
+
+        item = WikidataItem(
+            summary = f"Creating new item for Dutch church with name {name}",
+            labels = {
+                "en" : name,
+                "nl" : name
+            },
+            descriptions = {
+                "de" : f"Kirche in {CITY} (Niederlande)",
+                "en" : f"church in {CITY}, the Netherlands",
+                "es" : f"iglesia en {CITY} (Holanda)",
+                "fr" : f"Église d'{CITY} (Pays-Bas)",
+                "nl" : f"kerk in {CITY}"
+            }
+        )
+
+        item.add_item_claim(Props.INSTANCE_OF, Items.CHURCH_BUILDING)
+        item.add_string_claim(Props.RELIWIKI, pageid)
+        item.add_item_claim(Props.COUNTRY, Items.NETHERLANDS)
+        item.add_item_claim(Props.LOCATED_IN, church["admin_qid"])
+
+        if church["sonneveld"] != "":
+            item.add_string_claim(
+                Props.SONNEVELD, church["sonneveld"], references = get_refs(item, pageid)
+            )
+
+        if church["coordinates"] != "":
+            coord = church["coordinates"].split(",")
+            item.add_coordinate(
+                Props.COORDINATES, coord, references = get_refs(item, pageid)
+            )
+
+        if church["zipcode"] != "":
+            item.add_string_claim(
+                Props.ZIP, church["zipcode"], references = get_refs(item, pageid)
+            )
+
+        if church["address"] != "":
+            item.add_monoling_claim(
+                Props.STREET_ADDRESS, church["address"], "nl", references = get_refs(item, pageid)
+            )
+
+        if church["denomination_qid"] != "":
+            item.add_item_claim(
+                Props.RELIGION, church["denomination_qid"], references = get_refs(item, pageid)
+            )
+
+        if church["year_use"] != "":
+            if "s" in church["year_use"]:
+                decade = int(church["year_use"].replace("s", ""))
+                time = WbTime(year = decade, precision = "decade")
+            else:
+                time = WbTime(year = int(church["year_use"]))
+
+            item.add_time_claim(
+                Props.INCEPTION, time, references = get_refs(item, pageid)
+            )
+
+        print()
+
+        break
+
 if __name__ == "__main__":
-    add_prop_geo()
-    add_info()
+    create_new()
