@@ -279,4 +279,5 @@ def create_new():
         break
 
 if __name__ == "__main__":
-    create_new()
+    add_prop_geo()
+    add_info()

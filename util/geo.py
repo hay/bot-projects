@@ -1,4 +1,8 @@
+from dataknead import Knead
 from geopy.distance import distance as geodistance
+from shapely.geometry import asShape, Point
+from util.utils import dd
+import fiona
 
 def find_shortest_distance(needle, haystack, rough = False):
     shortest = [-1, None]
@@ -25,3 +29,35 @@ def find_shortest_distance(needle, haystack, rough = False):
             shortest = (index, distance)
 
     return shortest
+
+# Find coordinates using a shapefile
+# Based on https://stackoverflow.com/a/18749373/152809
+class ShapeFinder:
+    # path should be a path to a shapefile
+    def __init__(self, path):
+        print(f"Loading shapefile at {path}")
+
+        # We load the collection, then convert it to a series of polygons we
+        # can cache and use for the find_coordinate function
+        self.shapes = []
+
+        with fiona.open(path) as collection:
+            for feature in collection:
+                self.shapes.append({
+                    "geometry" : asShape(feature["geometry"]),
+                    "properties" : feature["properties"]
+                })
+
+        print("Loaded and parsed")
+
+    # Note that this function accepts lat/lon while shapely.Point wants lon/lat!
+    def find_coordinate(self, lat, lon):
+        print(f"Finding coordinate {lat},{lon}")
+
+        point = Point(lon, lat)
+
+        for shape in self.shapes:
+            if shape["geometry"].contains(point):
+                return shape
+
+        return None

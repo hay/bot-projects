@@ -5,10 +5,11 @@ from geopy.distance import distance as geodistance
 from multiprocessing.dummy import Pool
 from pathlib import Path
 from time import sleep
-from util.geo import find_shortest_distance
+from util.geo import find_shortest_distance, ShapeFinder
 from util.mediawiki import AllPages, MediawikiApi
 from util.utils import dd, Datasheet
 import json
+import random
 import re
 import requests
 import sys
@@ -16,6 +17,27 @@ import sys
 API_ENDPOINT = "http://reliwiki.nl/api.php"
 RMM_ID = re.compile("https://monumentenregister.cultureelerfgoed.nl/monumenten/(\d{1,6})")
 TITLE = re.compile("([^,]+),([^-–]+)[-|–](.+)")
+
+def check_coordinates():
+    # Go over all Reliwiki items with coordinates, check the gemeente
+    # and then write back to a new file
+    finder = ShapeFinder("./data/gemeentes-nl-2019/gemeentes-nl-2019.shp")
+
+    def find_gemeente(item):
+        lat, lon = item["coordinates"].split(",")
+
+        coord = finder.find_coordinate(float(lat), float(lon))
+        item["coord_matched"] = coord != None
+
+        if coord:
+            item["matched_code"] = coord["properties"]["Gemeenteco"]
+            item["matched_label"] = coord["properties"]["Gemeentena"]
+
+        return item
+
+    in_path = "data/reliwiki/reliwiki-with-coordinates.csv"
+    out_path = "data/reliwiki/reliwiki-with-coordinates-gemeentes.csv"
+    Knead(in_path).map(find_gemeente).write(out_path)
 
 def cleanup_churches():
     class Item:
