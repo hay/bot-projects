@@ -24,18 +24,22 @@ def check_coordinates():
     finder = ShapeFinder("./data/gemeentes-nl-2019/gemeentes-nl-2019.shp")
 
     def find_gemeente(item):
-        lat, lon = item["coordinates"].split(",")
+        try:
+            lat, lon = item["coordinates"].split(",")
 
-        coord = finder.find_coordinate(float(lat), float(lon))
-        item["coord_matched"] = coord != None
+            coord = finder.find_coordinate(float(lat), float(lon))
+            item["coord_matched"] = coord != None
 
-        if coord:
-            item["matched_code"] = coord["properties"]["Gemeenteco"]
-            item["matched_label"] = coord["properties"]["Gemeentena"]
+            if coord:
+                item["matched_code"] = coord["properties"]["Gemeenteco"]
+                item["matched_label"] = coord["properties"]["Gemeentena"]
+        except:
+            print("oops!")
+            item["coord_matched"] = False
 
         return item
 
-    in_path = "data/reliwiki/reliwiki-with-coordinates.csv"
+    in_path = "data/reliwiki/reliwiki-with-coordinates-2.csv"
     out_path = "data/reliwiki/reliwiki-with-coordinates-gemeentes.csv"
     Knead(in_path).map(find_gemeente).write(out_path)
 
@@ -138,6 +142,43 @@ def fetch_pages():
 
         print("Sleep for 3 second")
         sleep(3)
+
+def find_titles():
+    SPLIT_DASH = re.compile(" –|- ")
+
+    def get_title(pageid):
+        html_path = f"data/reliwiki/html/{pageid}.html"
+        # print(f"Extracing title from {html_path}")
+
+        with open(html_path) as f:
+            soup = BeautifulSoup(f.read(), "lxml")
+
+        title = soup.select_one("title").get_text().strip()
+        parts = SPLIT_DASH.split(title)[1:]
+        title = "- ".join(parts).replace("- Reliwiki", "").strip()
+        return title
+
+    titles = []
+    for item in Knead("data/reliwiki/churches_gsheet.csv").data():
+        if item["name"] != "":
+            continue
+
+        # Try to extract from the page title
+        pageid = item["pageid"]
+        try:
+            title = get_title(pageid)
+        except Exception as e:
+            print(f"Could not fetch title because of {e}")
+            continue
+
+        print(f"Got '{title}'")
+
+        titles.append({
+            "pageid" : pageid,
+            "title" : title
+        })
+
+    Knead(titles).write("data/reliwiki/church_extracted_titles.csv")
 
 def iter_html():
     for p in Path("data/reliwiki/html").glob("*.html"):

@@ -8,6 +8,10 @@ class BotJob:
         self.data = data
         self.item = item
 
+    def has_prop(self, pid):
+        claims = self.item.get_claims()
+        return pid in claims
+
 class Bot:
     def __init__(self, botid, datapath = None, sparql = None, run_once = False, qid_key = "qid"):
         print(f"Setting up new bot '{botid}'")
