@@ -12,6 +12,7 @@ class Props:
     CATALOG_CODE = "P528"
     CCONTEXT = "P8296"
     CCREATOR = "P6241"
+    COLLECTION = "P195"
     COMMEMORATES = "P547"
     COORDINATES = "P625"
     COORDINATES_POV = "P1259"
@@ -37,11 +38,14 @@ class Props:
     INFERRED_FROM = "P3452"
     INSCRIPTION = "P1684"
     INSTANCE_OF = "P31"
+    INVENTORY_NR = "P217"
     ISBN_10 = "P957"
     ISBN_13 = "P212"
     LANGUAGE_SHOW = "P364"
     LANGUAGE_WORK = "P407"
+    LEGISLATIVE_BODY = "P194"
     LOCATED_IN = "P131"
+    LOCATED_IN_ADMIN = "P131"
     LOCATED_ON_STREET = "P669"
     MATERIAL_USED = "P186"
     NAME = "P2561"
@@ -49,6 +53,7 @@ class Props:
     NR_OF_EPISODES = "P1113"
     NR_OF_RECORDS = "P4876"
     NR_OF_PAGES = "P1104"
+    NR_OF_SEATS = "P1410"
     OBJECT_HAS_ROLE = "P3831"
     OCCUPATION = "P106"
     OFFICIAL_WEBSITE = "P856"
@@ -106,6 +111,7 @@ class Items:
     BUILDING_EXPANSION = "Q19841649"
     CHURCH_BUILDING = "Q16970"
     CIRCA = "Q5727902"
+    DAM_SQUARE = "Q839050"
     DEDUCED_FROM_COORDINATES = "Q96623327"
     DUTCH = "Q7411"
     FEMALE = "Q6581072"
@@ -121,13 +127,19 @@ class Items:
     MUSICBRAINZ = "Q14005"
     MUSICAL_MAPS = "Q80590524"
     NETHERLANDS = "Q55"
+    NIJMEGEN_MUNIP = "Q47887"
+    NL_LOWER_HOUSE = "Q233262"
     NPO = "Q15991875"
     OPENING_CEREMONY = "Q3010369"
     PARK = "Q22698"
+    PRIVATE_COLLECTION = "Q768717"
+    PUBLIC_ART = "Q557141"
+    PUBLIC_ART_IN_NIJMEGEN = "Q105138564"
     RECONSTRUCTION = "Q1370468"
     RELIWIKI = "Q1920729"
     RIJKSMONUMENT_ID = "Q103567620"
     RKD = "Q758610"
+    SCULPTURE = "Q860861"
     SQUARE = "Q174782"
     STOLPERSTEIN = "Q26703203"
     STOLPERSTEINE_PROJECT = "Q314003"
@@ -320,10 +332,10 @@ class WikidataItem:
         claim = pywikibot.Claim(self.repo, prop)
         commons = pywikibot.Site("commons", "commons")
         imagelink = pywikibot.Link(filename, source = commons, defaultNamespace = 6)
-        image = pywikibot.ImagePage(imagelink)
+        image = pywikibot.FilePage(imagelink)
 
         if image.isRedirectPage():
-            image = pywikibot.ImagePage(image.getRedirectTarget())
+            image = pywikibot.page.ImagePage(image.getRedirectTarget())
 
         if not image.exists():
             raise Exception(f"Could not find image: {filename}")
@@ -348,7 +360,7 @@ class WikidataItem:
 
     def add_quantity_claim(self, prop, quantity, qualifiers = None, references = None):
         print(f"Adding quantity claim: {prop} -> {quantity}")
-        claim = self.get_claim(prop, pywikibot.WbQuantity(quantity))
+        claim = self.get_claim(prop, pywikibot.WbQuantity(quantity, site = self.repo))
         self.add_claim(claim, qualifiers, references)
 
     def add_string_claim(
@@ -376,6 +388,12 @@ class WikidataItem:
 
     def edit_aliases(self, aliases, summary = None):
         print("Setting aliases")
+
+        # Make sure aliases are in a list
+        for key, val in aliases.items():
+            if not isinstance(val, list):
+                raise Exception(f"Aliases should be in a list!")
+
         self.item.editAliases(aliases = aliases, summary = summary)
 
     def edit_descriptions(self, descriptions, summary = None):
