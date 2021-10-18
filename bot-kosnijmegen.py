@@ -111,8 +111,6 @@ def add_item(data):
         }
     )
 
-    # item = WikidataItem("Q105270874")
-
     item.edit_descriptions({
             "de" : f"Kunst im öffentlichen Raum in Nijmegen (Niederlande)",
             "en" : desc_en,

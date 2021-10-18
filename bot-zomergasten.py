@@ -1,9 +1,8 @@
 from dataknead import Knead
 from pathlib import Path
 from pywikibot import WbTime
-from util.dates import parse_isodate
+from util.dates import parse_isodate, wbtime_now
 from util.skiplist import Skiplist
-from util.utils import wbtime_now
 from util.wikidata import Props, Items, WikidataItem
 import pywikibot
 import sys
@@ -11,7 +10,7 @@ import sys
 def get_ref(item):
     return [
         item.get_item_claim(Props.IMPORTED_FROM, Items.WIKIPEDIA_NL),
-        item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=56861509")
+        item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=59438414")
     ]
 
 def add_sites():
@@ -197,17 +196,15 @@ def create_seasons():
 
 def create_episodes():
     PATH = str(Path(__file__).parent)
-    seasons = Knead(PATH + "/data/zomergasten/zomergasten.json").data()
+    seasons = Knead(PATH + "/data/zomergasten/zomergasten-2021.json").data()
 
     # Sort seasons by season_nr
     seasons.sort(key = lambda i:i["season_nr"])
-    episode_nr = 0
+    episode_nr = 176 # last episode of 2020
 
     for season in seasons:
         print()
         print(f"Handling season #{season['season_nr']}")
-
-        handle_season(season)
 
         year = season["year"]
         presenter_name = season["presenter"]["title"]
@@ -287,4 +284,4 @@ def create_episodes():
             item.add_item_claim(Props.DISTRIBUTED_BY, Items.NPO)
 
 if __name__ == "__main__":
-    add_sites()
+    create_episodes()

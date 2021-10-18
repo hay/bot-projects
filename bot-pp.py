@@ -19,6 +19,10 @@ def add_party_data(row):
     title = row["title"]
     qid = row["qid"]
 
+    if skiplist.has(qid):
+        print(f"In skiplist, skipping")
+        return
+
     item = WikidataItem(qid)
 
     if Props.NR_OF_SEATS in item.get_claims():
@@ -56,4 +60,9 @@ if __name__ == "__main__":
     data = Knead(f"{PATH}/data/pp/pp.csv", has_header = True).data()
 
     for item in data:
-        add_party_data(item)
+        try:
+            add_party_data(item)
+        except Exception as e:
+            print("Exception:")
+            print(e)
+            print()
