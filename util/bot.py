@@ -1,20 +1,31 @@
 from dataknead import Knead
 from util.wikidata import WikidataItem, Query
 from util.skiplist import Skiplist
+from util.utils import dd
 import sys
-
-print(WikidataItem)
 
 class BotJob:
     def __init__(self, data, item = None):
+        self.is_aborted = False
         self.data = data
         self.item = item
+
+    def abort(self, message):
+        print(f"Abort: {message}")
+        self.is_aborted = True
 
     def create_item(self, summary, labels, descriptions = None, aliases = None):
         if self.item:
             raise Exception("Job already has an item")
 
-        print(f"Creating new item", summary, labels, descriptions, aliases)
+        print(f"Creating new item")
+
+        dd({
+            "summary" : summary,
+            "labels" : labels,
+            "descriptions" : descriptions,
+            "aliases" : aliases
+        })
 
         try:
             self.item = WikidataItem(
@@ -52,8 +63,8 @@ class CreateBot:
             item_id = item[self.key]
 
             print()
-            print(f"#{index + 1}/{len(self.data)} / {item_id}")
-            print(f"Data: {item}")
+            print(f"#{index + 1} / {len(self.data)} / id:{item_id}")
+            dd(item)
             print()
 
             if self.skiplist.has(item_id):
@@ -62,6 +73,9 @@ class CreateBot:
 
             job = BotJob(data = item)
             yield job
+
+            if job.is_aborted:
+                continue
 
             if not job.item:
                 raise Exception("Still no item for this job, aborting")

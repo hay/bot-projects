@@ -147,5 +147,17 @@ def fetch_overviews():
         with open(DATA_PATH / f"p{i}.html", "w") as f:
             f.write(req.text)
 
+def switch_name(name):
+    print(name)
+
+    name = name.strip()
+
+    if "," in name:
+        parts = [p.strip() for p in name.split(",")]
+        return parts[1] + " " + parts[0]
+
+    else:
+        return name
+
 if __name__ == "__main__":
-    parse_json_items()
+    Knead("names.csv", read_as = "txt").map(switch_name).write("names-fixed.csv")

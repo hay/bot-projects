@@ -31,7 +31,9 @@ class Props:
     GENDER = "P21"
     GENRE = "P136"
     GTAA = "P1741"
+    HAS_CAUSE = "P828"
     HAS_WORKS_IN_COLLECTION = "P6379"
+    HEIGHT = "P2048"
     IMAGE = "P18"
     IMPORTED_FROM = "P143"
     INCEPTION = "P571"
@@ -75,6 +77,7 @@ class Props:
     RELIGION = "P140"
     RELIWIKI = "P8897"
     RETRIEVED = "P813"
+    RIJKSMONUMENT_ID = "P359"
     RKD_ARTISTS = "P650"
     RKD_IMAGES = "P350"
     SEASON = "P4908"
@@ -361,9 +364,9 @@ class WikidataItem:
         claim = self.get_monoling_claim(prop, string, lang)
         self.add_claim(claim, qualifiers, references)
 
-    def add_quantity_claim(self, prop, quantity, qualifiers = None, references = None):
+    def add_quantity_claim(self, prop, quantity, unit = None, qualifiers = None, references = None):
         print(f"Adding quantity claim: {prop} -> {quantity}")
-        claim = self.get_claim(prop, pywikibot.WbQuantity(quantity, site = self.repo))
+        claim = self.get_claim(prop, pywikibot.WbQuantity(quantity, unit = unit, site = self.repo))
         self.add_claim(claim, qualifiers, references)
 
     def add_string_claim(
