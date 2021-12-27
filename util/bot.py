@@ -52,6 +52,7 @@ class CreateBot:
         self.run_once = run_once
         self.skiplist = Skiplist(f"projects/skiplists/{self.id}.txt")
         self.key = key
+        self.current_job = None
         self.data = Knead(datapath).data()
 
     def iterate(self):
@@ -72,6 +73,7 @@ class CreateBot:
                 continue
 
             job = BotJob(data = item)
+            self.current_job = job
             yield job
 
             if job.is_aborted:

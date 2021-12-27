@@ -1,6 +1,7 @@
 from pathlib import Path
 from pywikibot import WbTime
 from util.bot import Bot, CreateBot
+from util.utils import dd
 from util.wikidata import Props, Items
 
 PATH = Path(__file__).parent.resolve()
@@ -14,6 +15,36 @@ def get_ref(job):
         job.item.get_item_claim(Props.LANGUAGE_WORK, Items.DUTCH)
     ]
 
+def get_safe_value(val):
+    if is_empty(val):
+        return None
+    else:
+        return val
+
+def has_duplicate_item(bot):
+    # Get the title, and check if it's unique in combination with artist/year
+    job = bot.current_job
+    title = job.data["title"]
+    inventory_nr = job.data["inventory"]
+    creator_qid = get_safe_value(job.data["creator_qid"])
+    year = get_safe_value(job.data["date"])
+    has_duplicate = False
+
+    for item in bot.data:
+        if inventory_nr == item["inventory"]:
+            # Current item, skip
+            continue
+
+        if all([
+            title == item["title"],
+            creator_qid == get_safe_value(item["creator_qid"]),
+            year == get_safe_value(item["date"])
+        ]):
+            has_duplicate = True
+            break
+
+    return has_duplicate
+
 def is_empty(val):
     val = val.strip()
     return val == "0" or val == "#N/A" or val ==""
@@ -23,7 +54,7 @@ def run_bot():
 
     bot = CreateBot(
         "vbvd2",
-        run_once = True,
+        run_once = False,
         datapath = str(DATA_PATH / "export-met-urls.csv"),
         key = "inventory"
     )
@@ -32,11 +63,14 @@ def run_bot():
         inventory = job.data["inventory"]
         title = job.data["title"]
         creator_name = job.data["creator_name"]
+        inventory_nr = job.data["inventory"]
 
         # If the job has a qid, skip because this already exists
         if not is_empty(job.data["item_qid"]):
             job.abort(f"Skipping {inventory}/{title}, item already is on Wikidata")
             continue
+
+
 
         summary = f"Adding new artwork '{title}' in Museum van Bommel van Dom in Venlo, the Netherlands"
 
@@ -62,6 +96,13 @@ def run_bot():
             year = job.data["date"]
             descriptions["en"] = f"{year} " + descriptions["en"]
             descriptions["nl"] = descriptions["nl"] + f" uit {year}"
+
+        # Check for duplicate item, and if it's there, create a description with
+        # the inventory number
+        if has_duplicate_item(bot):
+            print("Duplicate title/description, return a description with inventory suffix")
+            descriptions["nl"] = f"{descriptions['nl']} (objectnummer {inventory_nr})"
+            dd(descriptions)
 
         aliases = {
             "en" : [ title ]
@@ -91,7 +132,7 @@ def run_bot():
 
         job.item.add_string_claim(
             Props.INVENTORY_NR,
-            job.data["inventory"],
+            inventory_nr,
             qualifiers = collection_qualifers,
             references = get_ref(job)
         )
