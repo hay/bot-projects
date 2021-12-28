@@ -54,23 +54,21 @@ def run_bot():
 
     bot = CreateBot(
         "vbvd2",
-        run_once = False,
         datapath = str(DATA_PATH / "export-met-urls.csv"),
-        key = "inventory"
+        key = "inventory",
+        required_fields = ["inventory", "title", "url"],
+        empty_check = is_empty
     )
 
     for job in bot.iterate():
-        inventory = job.data["inventory"]
         title = job.data["title"]
         creator_name = job.data["creator_name"]
         inventory_nr = job.data["inventory"]
 
         # If the job has a qid, skip because this already exists
         if not is_empty(job.data["item_qid"]):
-            job.abort(f"Skipping {inventory}/{title}, item already is on Wikidata")
+            job.abort(f"Skipping {inventory_nr}/{title}, item already is on Wikidata")
             continue
-
-
 
         summary = f"Adding new artwork '{title}' in Museum van Bommel van Dom in Venlo, the Netherlands"
 
@@ -109,6 +107,9 @@ def run_bot():
         }
 
         job.create_item(summary, labels, descriptions, aliases)
+
+        # Save URL to Wayback Machine
+        job.archive_url(job.data["url"])
 
         if is_empty(job.data["type_qid"]):
             job.item.add_item_claim(Props.INSTANCE_OF, Items.WORK_OF_ART)
