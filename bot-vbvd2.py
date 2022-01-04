@@ -49,6 +49,18 @@ def is_empty(val):
     val = val.strip()
     return val == "0" or val == "#N/A" or val ==""
 
+def is_valid_year(val):
+    try:
+        year = int(val)
+    except ValueError:
+        return False
+
+    if year < 0 or year > 2030:
+        return False
+
+    return True
+
+
 def run_bot():
     DATA_PATH  = PATH / "data" / "vbvd"
 
@@ -65,8 +77,9 @@ def run_bot():
         creator_name = job.data["creator_name"]
         inventory_nr = job.data["inventory"]
 
-        # If the job has a qid, skip because this already exists
-        if not is_empty(job.data["item_qid"]):
+        # If the job has a qid, check if we want to append,
+        # otherwise skip because this already exists
+        if not is_empty(job.data["item_qid"]) and is_empty(job.data["append"]):
             job.abort(f"Skipping {inventory_nr}/{title}, item already is on Wikidata")
             continue
 
@@ -106,7 +119,30 @@ def run_bot():
             "en" : [ title ]
         }
 
-        job.create_item(summary, labels, descriptions, aliases)
+        # If this is an append item, get the item instead of creating
+        if not is_empty(job.data["item_qid"]) and not is_empty(job.data["append"]):
+            print("Item exists, add to it instead")
+            newjob = BotJob(
+                data = job.data,
+                item = WikidataItem(job.data["item_qid"])
+            )
+
+            job = newjob
+        else:
+            # Try, if we get an exception change the description because
+            # description is double
+            try:
+                job.create_item(summary, labels, descriptions, aliases)
+            except Exception as e:
+                print("Exception while creating", e)
+                print("Trying another description")
+
+                descriptions["nl"] = f"{descriptions['nl']} (objectnummer {inventory_nr})"
+
+                job.item.edit_descriptions(
+                    descriptions,
+                    f"Giving a complex description because we have a duplicate label/description"
+                )
 
         # Save URL to Wayback Machine
         job.archive_url(job.data["url"])
@@ -122,19 +158,18 @@ def run_bot():
             references = get_ref(job)
         )
 
+        # If we have no collection, assume it's the default one
         if is_empty(job.data["collection_qid"]):
-            collection_qid = None
-            collection_qualifers = []
+            collection_qid = "Q1994770"
         else:
             collection_qid = job.data["collection_qid"]
-            collection_qualifers = [
-                job.item.get_item_claim(Props.COLLECTION, Items.MUS_BOMMELVDAM)
-            ]
 
         job.item.add_string_claim(
             Props.INVENTORY_NR,
             inventory_nr,
-            qualifiers = collection_qualifers,
+            qualifiers = [
+                job.item.get_item_claim(Props.COLLECTION, collection_qid)
+            ],
             references = get_ref(job)
         )
 
@@ -153,27 +188,26 @@ def run_bot():
                 references = get_ref(job)
             )
 
-        if not is_empty(job.data["date"]):
+        if not is_empty(job.data["date"]) and is_valid_year(job.data["date"]):
             job.item.add_time_claim(
                 Props.INCEPTION,
                 WbTime(year = int(job.data["date"])),
                 references = get_ref(job)
             )
 
-        if job.data["collection_qid"]:
-            if is_empty(job.data["aquirement_qid"]):
-                cause_qualifers = []
-            else:
-                cause_qualifers = [
-                    job.item.get_item_claim(Props.HAS_CAUSE, job.data["aquirement_qid"])
-                ]
+        if is_empty(job.data["aquirement_qid"]):
+            cause_qualifers = []
+        else:
+            cause_qualifers = [
+                job.item.get_item_claim(Props.HAS_CAUSE, job.data["aquirement_qid"])
+            ]
 
-            job.item.add_item_claim(
-                Props.COLLECTION,
-                job.data["collection_qid"],
-                qualifiers = cause_qualifers,
-                references = get_ref(job)
-            )
+        job.item.add_item_claim(
+            Props.COLLECTION,
+            collection_qid,
+            qualifiers = cause_qualifers,
+            references = get_ref(job)
+        )
 
         if not is_empty(job.data["material_qid"]):
             job.item.add_item_claim(

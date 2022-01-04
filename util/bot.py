@@ -91,6 +91,14 @@ class CreateBot:
         self.required_fields = required_fields
         self.empty_check = empty_check
 
+    def has_required_fields(self, item):
+        for field in self.required_fields:
+            if self.empty_check(item[field]):
+                print(f"'{field}' is empty, aborting")
+                return False
+
+        return True
+
     def iterate(self):
         for index, item in enumerate(self.data):
             if self.key not in item or item[self.key] == "":
@@ -108,11 +116,8 @@ class CreateBot:
                 print(f"{item_id} in skiplist, skipping")
                 continue
 
-            # Check for required fields
-            for field in self.required_fields:
-                if self.empty_check(item[field]):
-                    print(f"'{field}' is empty, aborting")
-                    continue
+            if not self.has_required_fields(item):
+                continue
 
             if self.dry_run:
                 print("Dry run, skip the actual creating")
