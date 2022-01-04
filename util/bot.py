@@ -63,6 +63,9 @@ class BotJob:
         claims = self.item.get_claims()
         return pid in claims
 
+    def set_item_by_qid(self, qid):
+        self.item = WikidataItem(qid)
+
 class CreateBot:
     def __init__(
         self, botid, datapath, key = "id",
@@ -109,12 +112,13 @@ class CreateBot:
 
             print()
             print(f"#{index + 1} / {len(self.data)} / id:{item_id}")
-            dd(item)
-            print()
 
             if self.skiplist.has(item_id):
                 print(f"{item_id} in skiplist, skipping")
                 continue
+
+            dd(item)
+            print()
 
             if not self.has_required_fields(item):
                 continue

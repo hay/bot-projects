@@ -1,6 +1,6 @@
 from pathlib import Path
 from pywikibot import WbTime
-from util.bot import Bot, CreateBot
+from util.bot import Bot, CreateBot, BotJob
 from util.utils import dd
 from util.wikidata import Props, Items
 
@@ -122,12 +122,7 @@ def run_bot():
         # If this is an append item, get the item instead of creating
         if not is_empty(job.data["item_qid"]) and not is_empty(job.data["append"]):
             print("Item exists, add to it instead")
-            newjob = BotJob(
-                data = job.data,
-                item = WikidataItem(job.data["item_qid"])
-            )
-
-            job = newjob
+            job.set_item_by_qid(job.data["item_qid"])
         else:
             # Try, if we get an exception change the description because
             # description is double

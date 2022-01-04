@@ -268,19 +268,23 @@ class WikidataItem:
         if not qid:
             print("Creating item")
             self.item = pywikibot.ItemPage(self.site)
-            self.qid = self.item.getID()
-            print("Item created: %s" % qid)
 
             if labels:
                 self.edit_labels(labels, summary)
+
+            # Note that you can only fetch the ID of an item after a label
+            # has been set!
+            self.qid = self.item.getID()
+            print("Item created: %s" % self.qid)
 
             if descriptions:
                 self.edit_descriptions(descriptions, summary)
 
             if aliases:
                 self.edit_aliases(aliases, summary)
+        else:
+            self.qid = qid
 
-        self.qid = self.item.getID()
         print(f"Getting item {self.qid}")
         self.item = pywikibot.ItemPage(self.repo, self.qid)
 
