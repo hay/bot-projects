@@ -1,10 +1,11 @@
+from util.config import WEBHOOK_ENDPOINT
 from dataknead import Knead
 from datetime import datetime
 from pathlib import Path
 from urllib import parse
-# import pywikibot, time, json, os, re
 import json
 import os
+import requests
 
 # site = pywikibot.Site("wikidata", "wikidata")
 # test_site = pywikibot.Site("test", "wikidata")
@@ -24,6 +25,15 @@ def dd(obj):
 def parse_urlargs(url):
     query = parse.parse_qs(parse.urlparse(url).query)
     return {k:v[0] if v and len(v) == 1 else v for k,v in query.items()}
+
+def send_im_message(message):
+    print(f"Sending IM message '{message}'")
+
+    req = requests.get(WEBHOOK_ENDPOINT, params = {
+        "event" : "im_message",
+        "value1" : "HuskyBot",
+        "value2" : message
+    })
 
 def sleep(seconds = 20):
     # Sleep for a bit

@@ -1,7 +1,7 @@
 from pathlib import Path
 from pywikibot import WbTime
 from util.bot import Bot, CreateBot, BotJob
-from util.utils import dd
+from util.utils import dd, send_im_message
 from util.wikidata import Props, Items
 
 PATH = Path(__file__).parent.resolve()
@@ -62,6 +62,7 @@ def is_valid_year(val):
 
 
 def run_bot():
+    sys.exit("No, fix your code first")
     DATA_PATH  = PATH / "data" / "vbvd"
 
     bot = CreateBot(
@@ -74,7 +75,6 @@ def run_bot():
 
     for job in bot.iterate():
         title = job.data["title"]
-        creator_name = job.data["creator_name"]
         inventory_nr = job.data["inventory"]
 
         # If the job has a qid, check if we want to append,
@@ -91,6 +91,15 @@ def run_bot():
 
         descriptions = {}
 
+        # Check for empty or non-existing creator
+        if is_empty(job.data["creator_name"]):
+            creator_name = "een onbekende kunstenaar"
+            creator_name_en = "an unknown artist"
+        else:
+            creator_name = job.data["creator_name"]
+            creator_name_en = creator_name
+
+
         if is_empty(job.data["type"]):
             descriptions["nl"] = f"kunstwerk van {creator_name}"
         else:
@@ -98,10 +107,10 @@ def run_bot():
             descriptions["nl"] = f"{type_nl} van {creator_name}"
 
         if is_empty(job.data["type_en"]):
-            descriptions["en"] = f"work of art by {creator_name}"
+            descriptions["en"] = f"work of art by {creator_name_en}"
         else:
             type_en = job.data["type_en"]
-            descriptions["en"] = f"{type_en} by {creator_name}"
+            descriptions["en"] = f"{type_en} by {creator_name_en}"
 
         if not is_empty(job.data["date"]):
             year = job.data["date"]
@@ -130,9 +139,9 @@ def run_bot():
                 job.create_item(summary, labels, descriptions, aliases)
             except Exception as e:
                 print("Exception while creating", e)
-                print("Trying another description")
 
                 descriptions["nl"] = f"{descriptions['nl']} (objectnummer {inventory_nr})"
+                print("Trying another description: %s" % descriptions["nl"])
 
                 job.item.edit_descriptions(
                     descriptions,
@@ -220,4 +229,9 @@ def run_bot():
             )
 
 if __name__ == "__main__":
-    run_bot()
+    try:
+        run_bot()
+    except:
+        send_im_message("Bot got an exception")
+
+    send_im_message("Bot finished running")

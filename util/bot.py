@@ -1,7 +1,7 @@
 from dataknead import Knead
 from util.wikidata import WikidataItem, Query
 from util.skiplist import Skiplist
-from util.utils import dd
+from util.utils import dd, send_im_message
 import pywikibot
 import requests
 import sys
@@ -55,7 +55,9 @@ class BotJob:
                 aliases = aliases
             )
         except Exception as e:
-            print("Excepting while creating new item", e)
+            print("Got an exception while creating item", e)
+            # Re-raise
+            raise(e)
 
         print("Okay, created a new item")
 
@@ -144,9 +146,14 @@ class CreateBot:
                 sys.exit()
 
         print("Bot is done")
+        send_im_message(f"CreateBot finished running: {self.id}")
 
 class Bot:
-    def __init__(self, botid, datapath = None, sparql = None, run_once = False, qid_key = "qid"):
+    def __init__(
+        self, botid, datapath = None, sparql = None, run_once = False,
+        qid_key = "qid",
+        empty_check = lambda x: x == None or x == ""
+    ):
         print(f"Setting up new bot '{botid}'")
 
         if (not datapath) and (not sparql):
@@ -164,11 +171,11 @@ class Bot:
 
     def iterate(self):
         for index, item in enumerate(self.data):
-            if "qid" not in item or item["qid"] == "":
+            if self.qid_key not in item or self.empty_check(item[self.qid_key]):
                 print(f"This item has no QID, skipping, {item}")
                 continue
 
-            qid = item["qid"]
+            qid = item[self.qid_key]
             print()
             print(f"#{index + 1}/{len(self.data)} / {qid}")
             print(f"Data: {item}")
@@ -192,3 +199,5 @@ class Bot:
             if self.run_once:
                 print("Only running once...")
                 sys.exit()
+
+        send_im_message(f"Bot finished running: {self.id}")
