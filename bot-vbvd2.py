@@ -47,7 +47,7 @@ def has_duplicate_item(bot):
 
 def is_empty(val):
     val = val.strip()
-    return val == "0" or val == "#N/A" or val ==""
+    return val == "0" or val == "#N/A" or val == ""
 
 def is_valid_year(val):
     try:
@@ -98,7 +98,6 @@ def run_bot():
         else:
             creator_name = job.data["creator_name"]
             creator_name_en = creator_name
-
 
         if is_empty(job.data["type"]):
             descriptions["nl"] = f"kunstwerk van {creator_name}"

@@ -152,15 +152,26 @@ class Bot:
     def __init__(
         self, botid, datapath = None, sparql = None, run_once = False,
         qid_key = "qid",
-        empty_check = lambda x: x == None or x == ""
+        empty_check = lambda x: x == None or x == "",
+        precheck_data = lambda x:True
     ):
         print(f"Setting up new bot '{botid}'")
 
         if (not datapath) and (not sparql):
             raise Error("No datapath and no sparql")
 
+        # Parse command line arguments and play it safe, assume
+        # run_once  by default, except when they're
+        # disabled
+        args = pywikibot.handle_args()
+        run_once = "-run-all" not in args
+        print(f"Running once? {run_once}")
+
         self.id = botid
         self.run_once = run_once
+        self.qid_key = qid_key
+        self.empty_check = empty_check
+        self.precheck_data = precheck_data
         self.skiplist = Skiplist(f"projects/skiplists/{self.id}.txt")
 
         if datapath:
@@ -183,6 +194,11 @@ class Bot:
 
             if self.skiplist.has(qid):
                 print(f"{qid} in skiplist, skipping")
+                continue
+
+            # This is just a hook for doing a sanity check before fetching the data
+            if not self.precheck_data(item):
+                print(f"This item did not pass precheck, skipping")
                 continue
 
             try:

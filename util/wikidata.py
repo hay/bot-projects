@@ -405,16 +405,11 @@ class WikidataItem:
 
         self.item.editAliases(aliases = aliases, summary = summary)
 
-    def edit_descriptions(self, descriptions, summary = None):
-            summaryText = "Setting the descriptions"
+    def edit_descriptions(self, descriptions, summary = "Setting the descriptions"):
+        self.item.editDescriptions(descriptions = descriptions, summary = summary)
 
-            if summary:
-                summaryText = f"{summaryText} for {summary}"
-
-            self.item.editDescriptions(descriptions = descriptions, summary = summaryText)
-
-    def edit_labels(self, labels, summary = None):
-            self.item.editLabels(labels = labels, summary = summary)
+    def edit_labels(self, labels, summary = "Setting labels"):
+        self.item.editLabels(labels = labels, summary = summary)
 
     def get_aliases(self, lang = None):
         if lang:

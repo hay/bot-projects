@@ -1,12 +1,21 @@
 from pathlib import Path
 from util.bot import Bot
 from util.utils import dd, send_im_message
+import traceback
 
 PATH = Path(__file__).parent.resolve()
 
 def is_empty(val):
     val = val.strip()
     return val == "0" or val == "#N/A" or val ==""
+
+def precheck_data(data):
+    # Check if we need to fix the description, otherwise skip
+    if data["fix_description"] == "FALSE":
+        print("Skip, does not needs a fix to description")
+        return False
+    else:
+        return True
 
 def run_bot():
     DATA_PATH  = PATH / "data" / "vbvd"
@@ -15,15 +24,11 @@ def run_bot():
         "vbvd-fix",
         datapath = str(DATA_PATH / "export-met-urls.csv"),
         qid_key = "item_qid",
-        empty_check = is_empty
+        empty_check = is_empty,
+        precheck_data = precheck_data
     )
 
     for job in bot.iterate():
-        # Check if we need to fix the description, otherwise skip
-        if job.data["fix_description"] == "FALSE":
-            job.abort("Skip, does not needs a fix to description")
-            continue
-
         title = job.data["title"]
         inventory_nr = job.data["inventory"]
 
@@ -68,7 +73,8 @@ def run_bot():
 if __name__ == "__main__":
     try:
         run_bot()
-    except:
+    except Exception as e:
+        print(traceback.format_exc())
         send_im_message("Bot got an exception")
 
     send_im_message("Bot finished running")
