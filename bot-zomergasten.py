@@ -10,7 +10,7 @@ import sys
 def get_ref(item):
     return [
         item.get_item_claim(Props.IMPORTED_FROM, Items.WIKIPEDIA_NL),
-        item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=59438414")
+        item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=62556534")
     ]
 
 def add_sites():
@@ -134,10 +134,6 @@ def create_seasons():
         presenter_qid = season["presenter"]["qid"]
         episodes_count = len(season["guests"])
 
-        if season_nr < 4:
-            print("Existing season, skipping")
-            continue
-
         desc = {
             "label_en" : f"Zomergasten season {season_nr} ({year})",
             "label_nl" : f"Zomergasten seizoen {season_nr} ({year})",
@@ -196,11 +192,11 @@ def create_seasons():
 
 def create_episodes():
     PATH = str(Path(__file__).parent)
-    seasons = Knead(PATH + "/data/zomergasten/zomergasten-2021.json").data()
+    seasons = Knead(PATH + "/data/zomergasten/zomergasten-2022.json").data()
 
     # Sort seasons by season_nr
     seasons.sort(key = lambda i:i["season_nr"])
-    episode_nr = 176 # last episode of 2020
+    episode_nr = 182 # last episode of 2021
 
     for season in seasons:
         print()
@@ -218,10 +214,6 @@ def create_episodes():
             print()
             print(f"Handling episode #{episode_nr}, guest {guest_name}")
             date = parse_isodate(guest["date_parsed"])
-
-            if episode_nr < 8:
-                print("Already handled, skipping")
-                continue
 
             desc = {
                 "label_en" : f"Zomergasten with {guest_name} ({year})",
@@ -250,7 +242,8 @@ def create_episodes():
                     },
                     descriptions = {
                         "en" : desc["description_en"],
-                        "nl" : desc["description_nl"]
+                        "nl" : desc["description_nl"],
+                        "de" : "Folge von Zomergasten"
                     },
                     aliases = {
                         "en" : desc["aliases_en"],

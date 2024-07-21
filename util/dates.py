@@ -23,9 +23,9 @@ day, month and year, and also to English and Dutch friendly strings
 def parse_isodate(isodate):
     date = datetime.strptime(isodate, "%Y-%m-%d")
 
-    locale.setlocale(locale.LC_TIME, "en_US")
+    locale.setlocale(locale.LC_TIME, "en_US.UTF-8")
     en = date.strftime("%B %-d, %Y")
-    locale.setlocale(locale.LC_TIME, "nl_NL")
+    locale.setlocale(locale.LC_TIME, "nl_NL.UTF-8")
     nl = date.strftime("%-d %B %Y")
 
     return {

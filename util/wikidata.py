@@ -109,6 +109,7 @@ class Items:
     ADAMLINK = "Q54371815"
     ALBUM_COVER = "Q1333350"
     AMSTERDAM_MUNIP = "Q9899"
+    ANONYMOUS = "Q4233718"
     BAG_BOOK = "Q52084601"
     BRASS = "Q39782"
     BRIDGE = "Q12280"
@@ -180,6 +181,7 @@ class Query:
     NAMESPACE = "http://www.wikidata.org/entity/"
 
     def __init__(self, query):
+        print(f"Query: <{query}>")
         self.query = query
         self.items = []
         self.results = []
@@ -187,8 +189,11 @@ class Query:
     @classmethod
     def fromClaim(cls, prop, value):
         query = f"select ?item where {{ ?item wdt:{prop} {value}. }}"
-        print(f"Query: <{query}>")
         return cls(query)
+
+    @classmethod
+    def fromItemClaim(cls, prop, qid):
+        return cls.fromClaim(prop, f"wd:{qid}")
 
     @classmethod
     def getQid(cls, uri):
@@ -514,3 +519,16 @@ class WikidataItem:
             if prop_id == prop:
                 print("Found the property, removing")
                 self.item.removeClaims(claim)
+
+    def replace_claim_target(self, prop, oldqid, newqid):
+        # Replace the target for a specific property claim with a newqid,
+        # if the oldqid is available in a claim
+        print(f"Replacing {oldqid} for {newqid} on {self.qid}")
+        oldtarget = pywikibot.ItemPage(self.repo, oldqid)
+        newtarget = pywikibot.ItemPage(self.repo, newqid)
+
+        for claim in self.item.claims.get(prop):
+            if claim.getTarget() == oldtarget:
+                print(f"Claim has old target, replacing with new target")
+                summary = f"Replacing item in claim: {oldqid} to {newqid}"
+                claim.changeTarget(newtarget, summary = summary)
