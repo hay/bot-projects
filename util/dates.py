@@ -3,11 +3,11 @@ from pywikibot import WbTime
 import locale
 import re
 
-CIRCA = re.compile("^(?:ca|circa|omstreeks|rond)\.? (\d{4})$")
-CENTURY = re.compile("^(\d{2})d?e eeuw$")
-RANGE = re.compile("^(\d{4}) ?- ?(\d{4})$")
-TOKENS = re.compile(",| en")
-YEAR = re.compile("^(\d{4})$")
+CIRCA = re.compile(r"^(?:ca|circa|omstreeks|rond)\.? (\d{4})$")
+CENTURY = re.compile(r"^(\d{2})d?e eeuw$")
+RANGE = re.compile(r"^(\d{4}) ?- ?(\d{4})$")
+TOKENS = re.compile(r",| en")
+YEAR = re.compile(r"^(\d{4})$")
 
 def check(regex, string):
     matches = regex.findall(string)
