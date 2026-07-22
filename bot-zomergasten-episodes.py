@@ -1,19 +1,16 @@
 from dataknead import Knead
 from pathlib import Path
-from pywikibot import WbTime
-from util.dates import parse_isodate, wbtime_now
-from util.skiplist import Skiplist
+from util.dates import parse_isodate
 from util.wikidata import Props, Items, WikidataItem
 import pywikibot
-import sys
 
 PATH = Path(__file__).parent
-DATA_PATH = PATH / "data" / "zomergasten" / "zomergasten-2024.json"
+DATA_PATH = PATH / "data" / "zomergasten" / "zomergasten-2026.json"
 
 def get_ref(item):
     return [
         item.get_item_claim(Props.IMPORTED_FROM, Items.WIKIPEDIA_NL),
-        item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=67859574")
+        item.get_url_claim(Props.WM_IMPORT_URL, "https://nl.wikipedia.org/w/index.php?title=Lijst_van_seizoenen_van_Zomergasten&oldid=71633796")
     ]
 
 def create_season():
@@ -87,8 +84,8 @@ def create_season():
 
 def create_episodes():
     season = Knead(str(DATA_PATH)).data()
-    episode_nr = 194 # last episode of previous season
-    season_qid = "Q127688650"
+    episode_nr = 206 # last episode of previous season
+    season_qid = "Q140669086"
     season_episode_ordinal = 1
 
     print()
@@ -113,6 +110,10 @@ def create_episodes():
         print()
         print(f"Handling episode #{episode_nr}, guest {guest_name}")
         date = parse_isodate(guest["date_parsed"])
+
+        if ("skip" in guest) and (guest["skip"] == True):
+            print("Skipping this one")
+            continue
 
         desc = {
             "label_en" : f"Zomergasten with {guest_name} ({year})",
